@@ -524,6 +524,43 @@
         function openFileInput() {
             document.getElementById('fileInput').click();
         }
+
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        });
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const result = await response.json();
+                console.log('File uploaded successfully:', result.filename);
+                
+                // You might want to update the UI here to show the uploaded file
+                // For example:
+                appendMessage('system', `File "${result.filename}" uploaded successfully. You can now ask questions about this document.`);
+                
+                // Optionally, you can trigger processing of the new PDF here
+                // For example:
+                // processNewPDF(result.filename);
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                appendMessage('system', 'Error uploading file. Please try again.');
+            }
+        }
     
         function startNewChat() {
             document.getElementById('chatArea').innerHTML = '';
