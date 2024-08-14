@@ -8,332 +8,369 @@
     <link rel="shortcut icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --bg-color: #212121;
-            --text-color: #ffffff;
-            --sidebar-bg: #171717;
-            --input-bg: #2f2f2f;
-            --button-bg: #212121;
-            --hover-color: #2f2f2f;
-        }
-    
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-            height: 100%;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
-        }
-    
-        .container {
-            display: flex;
-            height: 100%;
-        }
-    
-        .sidebar {
-            width: 210px;
-            background-color: var(--sidebar-bg);
-            padding: 20px;
-            transition: all 0.3s ease;
-            position: fixed;
-            height: 100%;
-            overflow-y: auto;
-            z-index: 1000;
-            left: 0;
-            display: flex;
-            flex-direction: column;
-        }
-    
-        .sidebar.hidden {
-            transform: translateX(-300px);
-        }
-    
-        .sidebar.collapsed .new-chat-btn {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-        }
-    
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            margin-left: 260px;
-            transition: margin-left 0.3s ease, width 0.3s ease;
-            width: calc(100% - 260px);
-        }
-    
-        .main-content.full-width {
-            margin-left: 0;
-            width: 100%;
-        }
-    
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background-color: var(--bg-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-    
-        .header-left, .header-right {
-            display: flex;
-            align-items: center;
-        }
-    
-        button {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            cursor: pointer;
-            padding: 5px 10px;
-            transition: background-color 0.3s;
-            border-radius: 5px;
-        }
-    
-        button:hover {
-            background-color: var(--hover-color);
-        }
-    
-        .sidebar-toggle {
-            position: fixed;
-            top: 10px;
-            left: 7px;
-            z-index: 1001;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-    
-        .new-chat-btn {
-            position: fixed;
-            top: 10px;
-            left: 200px;
-            z-index: 1001;
-            background-color: var(--sidebar-bg);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
-    
-        .sidebar-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding-top: 60px;
-        }
-    
-        #chatHistory > .chat-history-item {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-    
-        #chatHistory > .chat-history-item:hover {
-            background-color: var(--hover-color);
-        }
-    
-        select {
-            background-color: var(--sidebar-bg);
-            color: var(--text-color);
-            padding: 5px;
-            border: none;
-            border-radius: 5px;
-            margin-right: 20px;
-        }
-    
-        main {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            overflow-y: auto;
-        }
-    
-        .options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  max-width: 800px;
-  margin: 290px auto 0;
-  justify-content: center;
+:root {
+    --bg-color: #212121;
+    --text-color: #ffffff;
+    --sidebar-bg: #171717;
+    --input-bg: #2f2f2f;
+    --button-bg: #212121;
+    --hover-color: #2f2f2f;
+    --accent-color: #10a37f; /* Accent color for hover effects and buttons */
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    height: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+.sidebar {
+    width: 210px;
+    background-color: var(--sidebar-bg);
+    padding: 20px;
+    position: fixed;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 1000;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+}
+
+.sidebar.collapsed .new-chat-btn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+}
+
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    width: calc(100% - 260px);
+    overflow-y: auto;
+}
+
+.main-content.full-width {
+    margin-left: 0;
+    width: 100%;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: var(--bg-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--hover-color); /* Adding border for separation */
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+}
+
+button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 5px 10px;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: var(--hover-color);
+    color: var(--accent-color); /* Add accent color on hover */
+}
+
+.sidebar-toggle {
+    position: fixed;
+    top: 10px;
+    left: 7px;
+    z-index: 1001;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.new-chat-btn {
+    position: fixed;
+    top: 10px;
+    left: 200px;
+    z-index: 1001;
+    background-color: var(--sidebar-bg);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.new-chat-btn:hover {
+    background-color: var(--hover-color);
+    transform: scale(1.1);
+}
+
+.sidebar-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-top: 60px;
+}
+
+#chatHistory > .chat-history-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#chatHistory > .chat-history-item:hover {
+    background-color: var(--hover-color);
+}
+
+select {
+    background-color: var(--sidebar-bg);
+    color: var(--text-color);
+    padding: 5px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 20px;
+    appearance: none;
+}
+
+main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    max-width: 800px;
+    margin: 290px auto 0;
+    justify-content: center;
 }
 
 .option-btn {
-  background-color: #212121;
-  color: #ffffff;
-  padding: 15px;
-  border-radius: 15px;
-  text-align: left;
-  font-size: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  transition: transform 0.3s, box-shadow 0.3s;
-  border: 1px solid #333333;
-  width: 100%;
-  height: 120px;
-  max-height: 139px;
-  cursor: pointer;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    padding: 15px;
+    border-radius: 15px;
+    text-align: left;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: 1px solid #333333;
+    width: 100%;
+    height: 120px;
+    max-height: 139px;
+    cursor: pointer;
 }
 
 .option-btn:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+    background-color: var(--hover-color);
 }
 
 .option-btn i {
-  font-size: 24px;
-  margin-bottom: 10px;
+    font-size: 24px;
+    margin-bottom: 10px;
 }
 
-    
-        footer {
-            padding: 20px;
-        }
-    
-        .input-area {
-            display: flex;
-            align-items: flex-start;
-            background-color: var(--input-bg);
-            border-radius: 15px;
-            padding: 10px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-    
-        .input-area textarea {
-            flex-grow: 1;
-            background: none;
-            border: none;
-            color: var(--text-color);
-            padding: 5px;
-            resize: none;
-            min-height: 20px;
-            max-height: 330px;
-            overflow-y: auto;
-        }
-    
-        .input-area textarea:focus {
-            outline: none;
-        }
-    
-        .chat-area {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            height: 100%;
-            overflow-y: auto;
-            align-items: center;
-            margin-bottom: 80px;
-        }
-    
-        .message {
-            margin-bottom: 20px;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 80%;
-            position: relative;
-            margin-left: auto;
-            margin-right: auto;
-        }
-    
-        .user-message {
-            background-color: #2f2f2f;
-            align-self: flex-end;
-        }
-    
-        .bot-message {
-            align-self: flex-start;
-        }
-    
-        .message-actions {
-            display: flex;
-            gap: 5px;
-            margin-top: 10px; /* Increased margin to provide more space */
-            color: var(--text-color);
-            justify-content: flex-start; /* Align icons to the left */
-            padding-left: 5px; /* Add some padding on the left to separate from the message border */
-        }
-    
-        .message-actions button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            color: #8e8ea0;
-            padding: 2px;
-        }
-    
-        .message-actions button:hover {
-            color: #40414f;
-        }
-    
-        .message-actions button.liked {
-            color: #10a37f;
-        }
-    
-        .edit-box {
-            width: 100%;
-            min-height: 100px;
-            margin-bottom: 10px;
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: none;
-            color: var(--text-color);
-        }
-    
-        .settings-dropdown {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            background-color: var(--sidebar-bg);
-            border-radius: 10px;
-            padding: 15px;
-            display: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
-    
-        .settings-dropdown label {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-    
-        .settings-dropdown select,
-        .settings-dropdown input[type="range"] {
-            margin-left: 10px;
-        }
-    
-        .light-mode {
-            --bg-color: #f0f0f0;
-            --text-color: #333333;
-            --sidebar-bg: #e0e0e0;
-            --input-bg: #ffffff;
-            --button-bg: #d0d0d0;
-            --hover-color: #c0c0c0;
-        }
-    
-        .copied {
-            color: #4caf50;
-        }
-    
-        @media (max-width: 1010px) {
+footer {
+    padding: 20px;
+}
+
+.input-area {
+    display: flex;
+    align-items: flex-start;
+    background-color: var(--input-bg);
+    border-radius: 15px;
+    padding: 10px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.input-area textarea {
+    flex-grow: 1;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 5px;
+    resize: none;
+    min-height: 20px;
+    max-height: 330px;
+    overflow-y: auto;
+}
+
+.input-area textarea:focus {
+    outline: none;
+}
+
+.chat-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    overflow-y: auto;
+    align-items: center;
+    margin-bottom: 80px;
+}
+
+.message {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 10px;
+    max-width: 80%;
+    position: relative;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.user-message {
+    background-color: #2f2f2f;
+    align-self: flex-end;
+}
+
+.bot-message {
+    align-self: flex-start;
+}
+
+.message-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px; /* Increased margin to provide more space */
+    color: var(--text-color);
+    justify-content: flex-start; /* Align icons to the left */
+    padding-left: 5px; /* Add some padding on the left to separate from the message border */
+}
+
+.message-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #8e8ea0;
+    padding: 2px;
+}
+
+.message-actions button:hover {
+    color: #40414f;
+}
+
+.message-actions button.liked {
+    color: var(--accent-color); /* Using accent color for liked button */
+}
+
+.edit-box {
+    width: 100%;
+    min-height: 100px;
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: none;
+    color: var(--text-color);
+}
+
+.settings-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background-color: var(--sidebar-bg);
+    border-radius: 10px;
+    padding: 15px;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.settings-dropdown label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.settings-dropdown select,
+.settings-dropdown input[type="range"] {
+    margin-left: 10px;
+}
+
+.light-mode {
+    --bg-color: #f0f0f0;
+    --text-color: #333333;
+    --sidebar-bg: #e0e0e0;
+    --input-bg: #ffffff;
+    --button-bg: #d0d0d0;
+    --hover-color: #c0c0c0;
+}
+
+.copied {
+    color: #4caf50;
+}
+
+@media (max-width: 1010px) {
+    .sidebar {
+        width: 30%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .sidebar.hidden {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .sidebar-toggle {
+        left: 7px;
+    }
+
+    .new-chat-btn {
+        left: 35px;
+    }
+}
+
+@media (max-width: 1010px) {
   .sidebar {
     width: 30%;
     transform: translateX(-100%);
@@ -389,11 +426,13 @@
         <div class="main-content">
             <header>
                 <div class="header-left">
-                    <!-- Empty div to maintain flex layout -->
+                    <select id="pdfSelect">
+                        <option value="">Select a PDF</option>
+                    </select>
                 </div>
                 <div class="header-right">
                     <select id="modelSelect">
-
+                        <!-- ... (keep existing model options) ... -->
                     </select>
                     <button onclick="toggleSettings()">⚙️</button>
                 </div>
@@ -401,22 +440,22 @@
             <main>
                 <div class="options-grid">
                     <button class="option-btn" onclick="startChat('Who is the main character in the story?')">
-                      <i class="fas fa-paint-brush"></i>
-                      Who is the main character in the story?
+                        <i class="fas fa-paint-brush"></i>
+                        Who is the main character in the story?
                     </button>
                     <button class="option-btn" onclick="startChat('Who is the book author?')">
-                      <i class="fas fa-lightbulb"></i>
-                      Who is the book author?
+                        <i class="fas fa-lightbulb"></i>
+                        Who is the book author?
                     </button>
                     <button class="option-btn" onclick="startChat('Summarize the provided book in 12 lines!')">
-                      <i class="fas fa-graduation-cap"></i>
-                      Summarize the provided book in 12 lines!
+                        <i class="fas fa-graduation-cap"></i>
+                        Summarize the provided book in 12 lines!
                     </button>
                     <button class="option-btn" onclick="startChat('Why did the main character do so?')">
-                      <i class="fas fa-umbrella-beach"></i>
-                      Why did the main character do so?
+                        <i class="fas fa-umbrella-beach"></i>
+                        Why did the main character do so?
                     </button>
-                  </div>
+                </div>
                 <div class="chat-area" id="chatArea"></div>
             </main>
             <footer>
@@ -441,9 +480,7 @@
             </label>
         </div>
     </div>
-
     <input type="file" id="fileInput" style="display: none;" multiple>
-
     <script>
         let chatHistory = [];
         let currentChatId = null;
@@ -843,6 +880,60 @@
 
     // Initialize the chat
     startNewChat();
+
+        // Function to load PDF list
+        async function loadPDFList() {
+            try {
+                const response = await fetch('/pdf_list');
+                const data = await response.json();
+                const pdfSelect = document.getElementById('pdfSelect');
+                pdfSelect.innerHTML = '<option value="">Select a PDF</option>';
+                data.pdf_files.forEach(pdf => {
+                    const option = document.createElement('option');
+                    option.value = pdf;
+                    option.textContent = pdf;
+                    pdfSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading PDF list:', error);
+            }
+        }
+
+        // Function to select PDF
+        async function selectPDF(pdfFile) {
+            try {
+                const response = await fetch('/select_pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pdf_file: pdfFile })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    console.log(data.message);
+                    appendMessage('system', `PDF "${pdfFile}" selected and processed successfully. You can now ask questions about this document.`);
+                } else {
+                    throw new Error(data.error || 'Failed to select PDF');
+                }
+            } catch (error) {
+                console.error('Error selecting PDF:', error);
+                appendMessage('system', 'Error selecting PDF. Please try again.');
+            }
+        }
+
+        // Event listener for PDF selection
+        document.getElementById('pdfSelect').addEventListener('change', function() {
+            if (this.value) {
+                selectPDF(this.value);
+            }
+        });
+
+        // Load PDF list on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPDFList();
+            // ... (keep existing DOMContentLoaded logic) ...
+        });
 </script>
 </body>
 </html>
