@@ -5,3 +5,4 @@ openai
 PyPDF2
 faiss-cpu
 pypdf
+tiktoken
