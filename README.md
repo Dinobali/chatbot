@@ -1,5 +1,5 @@
 # chatbot
-The chatbot is configured to use OpenAI embeddings for high-quality text processing and Ollama for generating responses to change any of these just nano config.json and change it.
+The chatbot is configured to use OpenAI embeddings for high-quality text processing and Ollama models for generating responses.
 
 ### How to Install and Run the Chatbot Application
 
