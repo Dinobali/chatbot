@@ -283,6 +283,7 @@ def upload_file():
         # Update the config to reflect the current PDF
         config['pdf_file'] = filename
         config['vectorstore_file'] = vectorstore_folder
+        config['last_selected_pdf'] = filename  # Add this line to save the last selected PDF
         save_config(config)
         
         return jsonify({"message": "File uploaded successfully", "filename": filename}), 200
@@ -295,37 +296,46 @@ def uploaded_file(filename):
 
 @app.route('/pdf_list', methods=['GET'])
 def get_pdf_list():
-    pdf_files = [f for f in os.listdir(config['pdf_folder']) if f.endswith('.pdf')]
+    pdf_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if f.endswith('.pdf')]
     return jsonify({"pdf_files": pdf_files})
 
 @app.route('/select_pdf', methods=['POST'])
 def select_pdf():
     data = request.json
     selected_pdf = data.get('pdf_file')
+    
     if not selected_pdf or not selected_pdf.endswith('.pdf'):
         return jsonify({"error": "Invalid PDF file selected"}), 400
 
+    logging.info(f"Selecting PDF: {selected_pdf}")
+
     config['pdf_file'] = selected_pdf
     config['vectorstore_file'] = f"{os.path.splitext(selected_pdf)[0]}_vectorstore"
+    config['last_selected_pdf'] = selected_pdf  # Save the last selected PDF
     save_config(config)
-
-    # Check if embeddings already exist
-    pdf_path = os.path.join(config['pdf_folder'], selected_pdf)
+    
+    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], selected_pdf)
     vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
+    
     if os.path.exists(vectorstore_path):
         logging.info("Embeddings already exist. Loading from existing vectorstore.")
         vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
     else:
         logging.info("No existing embeddings found. Creating new embeddings.")
-        # Process the selected PDF
         chunks = process_pdf(pdf_path)
         vectorstore = FAISS.from_documents(chunks, embeddings)
         vectorstore.save_local(vectorstore_path)
-
+    
     global qa_chain
     qa_chain = create_qa_chain(vectorstore)
 
     return jsonify({"message": "PDF selected and processed successfully"}), 200
+
+
+@app.route('/get_last_pdf', methods=['GET'])
+def get_last_pdf():
+    """Get the last selected PDF file."""
+    return jsonify({"last_selected_pdf": config.get("last_selected_pdf", "")})
 
 def calculate_confidence(source_docs):
     """Calculate confidence score based on the number of source documents."""
