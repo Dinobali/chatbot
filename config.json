@@ -1,0 +1,24 @@
+{
+    "pdf_folder": "pdf",
+    "pdf_file": "alice.pdf",
+    "embeddings_model": "text-embedding-3-large",
+    "llm_model": "gemma2:27b",
+    "embeddings_path": "embeddings",
+    "vectorstore_file": "alice_vectorstore",
+    "available_models": [
+        "qwen2:0.5b",
+        "qwen2:latest",
+        "command-r:latest",
+        "gemma2:2b",
+        "gemma2:latest",
+        "mixtral:8x7b",
+        "mixtral:8x22b",
+        "phi3:14b",
+        "gemma2:27b",
+        "llama3.1:70b",
+        "mistral-large:latest",
+        "mistral-nemo:latest",
+        "llama3.1:latest"
+    ],
+    "last_chosen_model": "mixtral:8x7b"
+}
