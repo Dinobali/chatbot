@@ -1,10 +1,12 @@
 # chatbot
 The chatbot is configured to use OpenAI embeddings for high-quality text processing and Ollama models for generating responses.
 
-### How to Install and Run the Chatbot Application
 
 <img width="1792" alt="Screenshot 2024-08-14 at 22 27 19" src="https://github.com/user-attachments/assets/c25259a3-5754-424e-836d-840dbd04347d">
 
+
+
+### How to Install and Run the Chatbot Application
 
 #### Prerequisites
 
