@@ -122,32 +122,6 @@ def create_qa_chain(vectorstore):
     logging.info("Created RetrievalQA chain")
     return qa_chain
 
-# Find the PDF file
-pdf_path = os.path.join(config['pdf_folder'], config['pdf_file'])
-
-if not os.path.exists(pdf_path):
-    logging.error(f"PDF file not found: {pdf_path}")
-    raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-
-# Check if embeddings exist, if not create and save them
-embeddings_path = config['embeddings_path']
-if not os.path.exists(embeddings_path):
-    os.makedirs(embeddings_path)
-
-vectorstore_path = os.path.join(embeddings_path, config['vectorstore_file'])
-
-if os.path.exists(vectorstore_path):
-    logging.info("Loading existing vectorstore")
-    vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-else:
-    logging.info("Creating new vectorstore")
-    chunks = process_pdf(pdf_path)
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-    vectorstore.save_local(vectorstore_path)
-
-# Create QA chain
-qa_chain = create_qa_chain(vectorstore)
-
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -177,10 +151,14 @@ def ask_question():
 
     try:
         # Update the llm model dynamically if needed
-        global llm
+        global llm, qa_chain
         llm = Ollama(model=model)
-        qa_chain = create_qa_chain(vectorstore)
         
+        # Reinitialize the qa_chain to use the latest vectorstore
+        vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
+        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+        qa_chain = create_qa_chain(vectorstore)
+
         result = qa_chain({"query": question})
         answer = result['result']
         source_docs = result['source_documents']
@@ -226,6 +204,7 @@ def ask_question():
     except Exception as e:
         logging.error(f"Error processing question: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/models', methods=['GET'])
 def get_models():
@@ -284,17 +263,69 @@ def upload_file():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         
-        # Process the new PDF
-        chunks = process_pdf(file_path)
-        vectorstore = FAISS.from_documents(chunks, embeddings)
-        vectorstore.save_local(vectorstore_path)
+        # Check if embeddings already exist
+        vectorstore_folder = f"{os.path.splitext(filename)[0]}_vectorstore"
+        vectorstore_path = os.path.join(config['embeddings_path'], vectorstore_folder)
+        if os.path.exists(vectorstore_path):
+            logging.info("Embeddings already exist. Loading from existing vectorstore.")
+            vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+        else:
+            logging.info("No existing embeddings found. Creating new embeddings.")
+            # Process the new PDF
+            chunks = process_pdf(file_path)
+            vectorstore = FAISS.from_documents(chunks, embeddings)
+            vectorstore.save_local(vectorstore_path)
+        
+        # Update the global qa_chain with the new vectorstore
+        global qa_chain
+        qa_chain = create_qa_chain(vectorstore)
+
+        # Update the config to reflect the current PDF
+        config['pdf_file'] = filename
+        config['vectorstore_file'] = vectorstore_folder
+        save_config(config)
         
         return jsonify({"message": "File uploaded successfully", "filename": filename}), 200
     return jsonify({"error": "File type not allowed"}), 400
 
+
 @app.route('/pdf/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/pdf_list', methods=['GET'])
+def get_pdf_list():
+    pdf_files = [f for f in os.listdir(config['pdf_folder']) if f.endswith('.pdf')]
+    return jsonify({"pdf_files": pdf_files})
+
+@app.route('/select_pdf', methods=['POST'])
+def select_pdf():
+    data = request.json
+    selected_pdf = data.get('pdf_file')
+    if not selected_pdf or not selected_pdf.endswith('.pdf'):
+        return jsonify({"error": "Invalid PDF file selected"}), 400
+
+    config['pdf_file'] = selected_pdf
+    config['vectorstore_file'] = f"{os.path.splitext(selected_pdf)[0]}_vectorstore"
+    save_config(config)
+
+    # Check if embeddings already exist
+    pdf_path = os.path.join(config['pdf_folder'], selected_pdf)
+    vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
+    if os.path.exists(vectorstore_path):
+        logging.info("Embeddings already exist. Loading from existing vectorstore.")
+        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+    else:
+        logging.info("No existing embeddings found. Creating new embeddings.")
+        # Process the selected PDF
+        chunks = process_pdf(pdf_path)
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+        vectorstore.save_local(vectorstore_path)
+
+    global qa_chain
+    qa_chain = create_qa_chain(vectorstore)
+
+    return jsonify({"message": "PDF selected and processed successfully"}), 200
 
 def calculate_confidence(source_docs):
     """Calculate confidence score based on the number of source documents."""
@@ -308,4 +339,16 @@ if __name__ == '__main__':
     models = fetch_available_models()
     if models:
         update_config_with_models(models)
+
+    # Initialize the vectorstore and qa_chain
+    pdf_path = os.path.join(config['pdf_folder'], config['pdf_file'])
+    vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
+    if os.path.exists(vectorstore_path):
+        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+    else:
+        chunks = process_pdf(pdf_path)
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+        vectorstore.save_local(vectorstore_path)
+    qa_chain = create_qa_chain(vectorstore)
+
     app.run(host='0.0.0.0', port=5005, debug=True)
