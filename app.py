@@ -2,7 +2,8 @@ import os
 import json
 import logging
 import subprocess
-from flask import Flask, request, jsonify, render_template, abort
+from flask import Flask, request, jsonify, render_template, abort, send_from_directory
+from werkzeug.utils import secure_filename
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OpenAIEmbeddings
@@ -19,6 +20,10 @@ app = Flask(__name__)
 
 CONFIG_FILE = 'config.json'
 CHAT_HISTORY_FILE = 'chat_history.json'
+UPLOAD_FOLDER = 'pdf'
+ALLOWED_EXTENSIONS = {'pdf'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def load_config():
     """Load the configuration from the JSON file."""
@@ -143,6 +148,10 @@ else:
 # Create QA chain
 qa_chain = create_qa_chain(vectorstore)
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/')
 def home():
     return render_template('index.html')  # Render the index.html template
@@ -258,18 +267,43 @@ def refresh_models():
     """Refresh the list of available models."""
     models = fetch_available_models()
     if models:
-        update_config_with_models(models
-
-)
+        update_config_with_models(models)
         return jsonify({"message": "Models refreshed successfully", "models": models})
     else:
         return jsonify({"error": "Failed to fetch models"}), 500
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        # Process the new PDF
+        chunks = process_pdf(file_path)
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+        vectorstore.save_local(vectorstore_path)
+        
+        return jsonify({"message": "File uploaded successfully", "filename": filename}), 200
+    return jsonify({"error": "File type not allowed"}), 400
+
+@app.route('/pdf/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 def calculate_confidence(source_docs):
     """Calculate confidence score based on the number of source documents."""
     return min(len(source_docs) / 3, 1.0)  # Adjust denominator as needed
 
 if __name__ == '__main__':
+    # Ensure the upload folder exists
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    
     # Fetch and update models on startup
     models = fetch_available_models()
     if models:
