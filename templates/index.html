@@ -722,16 +722,19 @@ footer {
     
         document.addEventListener('DOMContentLoaded', async function() {
             try {
+                // Load PDF list
+                await loadPDFList();
+
                 // Fetch available models
                 const modelsResponse = await fetch('/models');
                 const modelsData = await modelsResponse.json();
                 const modelSelect = document.getElementById('modelSelect');
-    
+
                 // Fetch last chosen model
                 const lastModelResponse = await fetch('/get_last_model');
                 const lastModelData = await lastModelResponse.json();
                 const lastChosenModel = lastModelData.last_chosen_model;
-    
+
                 modelsData.models.forEach(model => {
                     const option = document.createElement('option');
                     option.value = model;
@@ -739,20 +742,21 @@ footer {
                     if (model === lastChosenModel) {
                         option.selected = true;
                     }
-                modelSelect.appendChild(option);
-            });
+                    modelSelect.appendChild(option);
+                });
 
-            // Set the current model display
-            if (lastChosenModel) {
-                document.getElementById('current-model').textContent = `Current Model: ${lastChosenModel}`;
+                // Set the current model display
+                if (lastChosenModel) {
+                    document.getElementById('current-model').textContent = `Current Model: ${lastChosenModel}`;
+                }
+
+                // Load chat history
+                loadChatHistory();
+
+            } catch (error) {
+                console.error('Error during initialization:', error);
             }
-        } catch (error) {
-            console.error('Error loading models or last chosen model:', error);
-        }
-
-        // Load chat history
-        loadChatHistory();
-    });
+        });
 
     function setModel(model) {
         fetch('/set_model', {
@@ -881,46 +885,57 @@ footer {
     // Initialize the chat
     startNewChat();
 
-        // Function to load PDF list
-        async function loadPDFList() {
-            try {
-                const response = await fetch('/pdf_list');
-                const data = await response.json();
-                const pdfSelect = document.getElementById('pdfSelect');
-                pdfSelect.innerHTML = '<option value="">Select a PDF</option>';
-                data.pdf_files.forEach(pdf => {
-                    const option = document.createElement('option');
-                    option.value = pdf;
-                    option.textContent = pdf;
-                    pdfSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Error loading PDF list:', error);
+    // Load PDF list into the dropdown
+    async function loadPDFList() {
+        try {
+            const response = await fetch('/pdf_list');
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        }
 
-        // Function to select PDF
-        async function selectPDF(pdfFile) {
-            try {
-                const response = await fetch('/select_pdf', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ pdf_file: pdfFile })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    console.log(data.message);
-                    appendMessage('system', `PDF "${pdfFile}" selected and processed successfully. You can now ask questions about this document.`);
-                } else {
-                    throw new Error(data.error || 'Failed to select PDF');
+            const data = await response.json();
+            const pdfSelect = document.getElementById('pdfSelect');
+            data.pdf_files.forEach(pdf => {
+                const option = document.createElement('option');
+                option.value = pdf;
+                option.textContent = pdf;
+                pdfSelect.appendChild(option);
+            });
+
+            pdfSelect.addEventListener('change', function() {
+                if (this.value) {
+                    selectPDF(this.value);
                 }
-            } catch (error) {
-                console.error('Error selecting PDF:', error);
-                appendMessage('system', 'Error selecting PDF. Please try again.');
-            }
+            });
+        } catch (error) {
+            console.error('Error loading PDF list:', error);
         }
+    }
+
+    // Handle PDF selection
+    async function selectPDF(pdfFile) {
+        console.log('selectPDF called with:', pdfFile);
+        try {
+            const response = await fetch('/select_pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pdf_file: pdfFile })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                console.log('PDF selection successful:', data);
+                appendMessage('system', `PDF "${pdfFile}" selected and processed successfully. You can now ask questions about this document.`);
+            } else {
+                throw new Error(data.error || 'Failed to select PDF');
+            }
+        } catch (error) {
+            console.error('Error selecting PDF:', error);
+            appendMessage('system', 'Error selecting PDF. Please try again.');
+        }
+    }
 
         // Event listener for PDF selection
         document.getElementById('pdfSelect').addEventListener('change', function() {
