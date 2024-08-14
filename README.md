@@ -1,10 +1,6 @@
 # chatbot
 chat with your local files
 
-Certainly! Here’s a clear and user-friendly guide on how to install and run the app:
-
----
-
 ### How to Install and Run the Chatbot Application
 
 To interact with other users using this chatbot, please follow the steps below:
