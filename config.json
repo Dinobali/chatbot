@@ -8,5 +8,5 @@
     "available_models": [
         "llama3.1:latest"
     ],
-    "last_chosen_model": "mixtral:8x7b"
+    "last_chosen_model": "llama3.1:latest"
 }
