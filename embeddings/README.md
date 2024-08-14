@@ -1,1 +1,1 @@
-
+in this directory all embeddings will be saved once embedded by your local model or online models like openai embeddings. for example if you embed alice.pdf. it will then appear here in a folder named alice_vectorstore which then contains two files 1. index.faiss and 2. index.pkl
