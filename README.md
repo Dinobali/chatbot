@@ -3,8 +3,6 @@ chat with your local files
 
 ### How to Install and Run the Chatbot Application
 
-To interact with other users using this chatbot, please follow the steps below:
-
 #### Prerequisites
 
 1. **Ollama Installed**:
