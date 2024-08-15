@@ -158,13 +158,16 @@ button:hover {
 }
 
 select {
-    background-color: var(--sidebar-bg);
+    background-color: #212121;
     color: var(--text-color);
     padding: 5px;
     border: none;
     border-radius: 5px;
     margin-right: 20px;
+    margin-left: 220px;
     appearance: none;
+    border: 1px solid #333333;
+
 }
 
 main {
@@ -412,75 +415,76 @@ footer {
     </style>
 </head>
 <body>
-    <div class="container" id="container">
-        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-        <div class="sidebar" id="sidebar">
-            <button class="new-chat-btn" onclick="startNewChat()">
-                <span style="margin-right: 5px;">+</span>
-            </button>
-            <div class="sidebar-content">
-                <h2></h2>
-                <div id="chatHistory"></div>
-            </div>
-        </div>
-        <div class="main-content">
-            <header>
-                <div class="header-left">
-                    <select id="pdfSelect">
-                        <option value="">Select a PDF</option>
-                    </select>
-                </div>
-                <div class="header-right">
-                    <select id="modelSelect">
-                        <!-- ... (keep existing model options) ... -->
-                    </select>
-                    <button onclick="toggleSettings()">⚙️</button>
-                </div>
-            </header>
-            <main>
-                <div class="options-grid">
-                    <button class="option-btn" onclick="startChat('Who is the main character in the story?')">
-                        <i class="fas fa-paint-brush"></i>
-                        Who is the main character in the story?
-                    </button>
-                    <button class="option-btn" onclick="startChat('Who is the book author?')">
-                        <i class="fas fa-lightbulb"></i>
-                        Who is the book author?
-                    </button>
-                    <button class="option-btn" onclick="startChat('Summarize the provided book in 12 lines!')">
-                        <i class="fas fa-graduation-cap"></i>
-                        Summarize the provided book in 12 lines!
-                    </button>
-                    <button class="option-btn" onclick="startChat('Why did the main character do so?')">
-                        <i class="fas fa-umbrella-beach"></i>
-                        Why did the main character do so?
-                    </button>
-                </div>
-                <div class="chat-area" id="chatArea"></div>
-            </main>
-            <footer>
-                <div class="input-area">
-                    <button onclick="openFileInput()">📎</button>
-                    <textarea id="userInput" placeholder="Message ChatGPT..." rows="1" oninput="autoResize(this)"></textarea>
-                    <button onclick="sendMessage()">➤</button>
-                </div>
-            </footer>
-        </div>
-        <div class="settings-dropdown" id="settingsDropdown">
-            <label>
-                Theme:
-                <select onchange="toggleTheme(this.value)">
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
-                </select>
-            </label>
-            <label>
-                Font Size:
-                <input type="range" min="12" max="24" value="16" onchange="changeFontSize(this.value)">
-            </label>
+<div class="container" id="container">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <div class="sidebar" id="sidebar">
+        <button class="new-chat-btn" onclick="startNewChat()">
+            <span style="margin-right: 5px;">+</span>
+        </button>
+        <div class="sidebar-content">
+            <h2></h2>
+            <div id="chatHistory"></div>
         </div>
     </div>
-    <input type="file" id="fileInput" style="display: none;" multiple>
+    <div class="main-content">
+        <header>
+            <div class="header-left">
+                <select id="pdfSelect" onchange="selectPDF()">
+                    <option value="">Select a PDF</option>
+                </select>
+            </div>
+            <div class="header-right">
+                <select id="modelSelect" onchange="setModel()">
+                    <!-- ... (keep existing model options) ... -->
+                </select>
+                <button onclick="toggleSettings()">⚙️</button>
+            </div>
+        </header>
+        <main>
+            <div class="options-grid">
+                <button class="option-btn" onclick="startChat('Who is the main character in the story?')">
+                    <i class="fas fa-paint-brush"></i>
+                    Who is the main character in the story?
+                </button>
+                <button class="option-btn" onclick="startChat('Who is the book author?')">
+                    <i class="fas fa-lightbulb"></i>
+                    Who is the book author?
+                </button>
+                <button class="option-btn" onclick="startChat('Summarize the provided book in 12 lines!')">
+                    <i class="fas fa-graduation-cap"></i>
+                    Summarize the provided book in 12 lines!
+                </button>
+                <button class="option-btn" onclick="startChat('What is this book about?')">
+                    <i class="fas fa-umbrella-beach"></i>
+                    What is this book about?
+                </button>
+            </div>
+            <div class="chat-area" id="chatArea"></div>
+        </main>
+        <footer>
+            <div class="input-area">
+                <button onclick="openFileInput()">📎</button>
+                <textarea id="userInput" placeholder="Message ChatGPT..." rows="1" oninput="autoResize(this)"></textarea>
+                <button onclick="sendMessage()">➤</button>
+            </div>
+        </footer>
+    </div>
+    <div class="settings-dropdown" id="settingsDropdown">
+        <label>
+            Theme:
+            <select onchange="toggleTheme(this.value)">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </label>
+        <label>
+            Font Size:
+            <input type="range" min="12" max="24" value="16" onchange="changeFontSize(this.value)">
+        </label>
+    </div>
+</div>
+<input type="file" id="fileInput" style="display: none;" multiple accept=".pdf">
+
     <script>
         let chatHistory = [];
         let currentChatId = null;
@@ -559,45 +563,51 @@ footer {
         }
     
         function openFileInput() {
-            document.getElementById('fileInput').click();
-        }
+    document.getElementById('fileInput').click();
+}
 
-        document.getElementById('fileInput').addEventListener('change', (event) => {
-            const files = event.target.files;
-            if (files.length > 0) {
-                uploadFile(files[0]);
-            }
+document.getElementById('fileInput').addEventListener('change', (event) => {
+    const files = event.target.files;
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
+});
+
+async function uploadFiles(files) {
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
         });
 
-        async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-
-                const result = await response.json();
-                console.log('File uploaded successfully:', result.filename);
-                
-                // You might want to update the UI here to show the uploaded file
-                // For example:
-                appendMessage('system', `File "${result.filename}" uploaded successfully. You can now ask questions about this document.`);
-                
-                // Optionally, you can trigger processing of the new PDF here
-                // For example:
-                // processNewPDF(result.filename);
-            } catch (error) {
-                console.error('Error uploading file:', error);
-                appendMessage('system', 'Error uploading file. Please try again.');
-            }
+        if (!response.ok) {
+            throw new Error('Upload failed');
         }
+
+        const result = await response.json();
+        console.log('Files uploaded successfully:', result.filenames);
+        
+        // Update the UI to show the uploaded files
+        const fileNames = result.filenames.join(', ');
+        appendMessage('system', `Files "${fileNames}" uploaded successfully. You can now ask questions about these documents.`);
+        
+        // Refresh the PDF list
+        await loadPDFList();
+
+        // If you have a function to process new PDFs, you can call it here
+        // For example:
+        // await processNewPDFs(result.filenames);
+    } catch (error) {
+        console.error('Error uploading files:', error);
+        appendMessage('system', 'Error uploading files. Please try again.');
+    }
+}
+
     
         function startNewChat() {
             document.getElementById('chatArea').innerHTML = '';
