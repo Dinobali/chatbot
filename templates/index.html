@@ -82,12 +82,20 @@ header {
     position: sticky;
     top: 0;
     z-index: 100;
-    border-bottom: 1px solid var(--hover-color); /* Adding border for separation */
 }
 
 .header-left, .header-right {
     display: flex;
     align-items: center;
+}
+
+.header-right {
+    gap: 10px;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 1.2em;
 }
 
 button {
@@ -102,14 +110,49 @@ button {
 
 button:hover {
     background-color: var(--hover-color);
-    color: var(--accent-color); /* Add accent color on hover */
+    color: var(--accent-color);
+}
+
+select, .icon-button {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    padding: 5px 10px;
+    border: 1px solid #333333;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+select {
+    appearance: none;
+    padding-right: 20px;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 5px top 50%;
+    background-size: 16px;
+}
+
+.icon-button {
+    font-size: 1.2em;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: none;
+    border: none;
+}
+
+select:hover, .icon-button:hover {
+    background-color: var(--hover-color);
+    color: var(--accent-color);
 }
 
 .sidebar-toggle {
-    position: fixed;
-    top: 10px;
-    left: 7px;
-    z-index: 1001;
+    position: static;
+    top: auto;
+    left: auto;
+    margin-left: 10px;
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -155,19 +198,6 @@ button:hover {
 
 #chatHistory > .chat-history-item:hover {
     background-color: var(--hover-color);
-}
-
-select {
-    background-color: #212121;
-    color: var(--text-color);
-    padding: 5px;
-    border: none;
-    border-radius: 5px;
-    margin-right: 20px;
-    margin-left: 220px;
-    appearance: none;
-    border: 1px solid #333333;
-
 }
 
 main {
@@ -278,10 +308,10 @@ footer {
 .message-actions {
     display: flex;
     gap: 5px;
-    margin-top: 10px; /* Increased margin to provide more space */
+    margin-top: 10px;
     color: var(--text-color);
-    justify-content: flex-start; /* Align icons to the left */
-    padding-left: 5px; /* Add some padding on the left to separate from the message border */
+    justify-content: flex-start;
+    padding-left: 5px;
 }
 
 .message-actions button {
@@ -298,7 +328,7 @@ footer {
 }
 
 .message-actions button.liked {
-    color: var(--accent-color); /* Using accent color for liked button */
+    color: var(--accent-color);
 }
 
 .edit-box {
@@ -371,52 +401,52 @@ footer {
     .new-chat-btn {
         left: 35px;
     }
-}
 
-@media (max-width: 1010px) {
-  .sidebar {
-    width: 30%;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-  }
-  
-  .sidebar.hidden {
-    transform: translateX(0);
-  }
-  
-  .main-content {
-    margin-left: 0;
-    width: 100%;
-  }
-  
-  .sidebar-toggle {
-    left: 7px;
-  }
-  
-  .options-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    max-width: 400px;
-  }
-  
-  .option-btn {
-    max-width: none;
-    width: 100%;
-  }
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+
+    select {
+        max-width: 30%;
+    }
+
+    .options-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        max-width: 400px;
+    }
+
+    .option-btn {
+        max-width: none;
+        width: 100%;
+    }
 }
 
 @media (max-width: 600px) {
-  .options-grid {
-    grid-template-columns: 1fr;
-    max-width: 168px;
-  }
-}
+    .header-right {
+        flex-wrap: wrap;
+    }
 
+    select, .icon-button {
+        margin-bottom: 5px;
+    }
+
+    .options-grid {
+        grid-template-columns: 1fr;
+        max-width: 168px;
+    }
+}
     </style>
 </head>
 <body>
 <div class="container" id="container">
-    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     <div class="sidebar" id="sidebar">
         <button class="new-chat-btn" onclick="startNewChat()">
             <span style="margin-right: 5px;">+</span>
@@ -429,15 +459,22 @@ footer {
     <div class="main-content">
         <header>
             <div class="header-left">
+                <h1></h1>
+            </div>
+            <div class="header-right">
+                <button class="sidebar-toggle icon-button" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
                 <select id="pdfSelect" onchange="selectPDF()">
                     <option value="">Select a PDF</option>
                 </select>
-            </div>
-            <div class="header-right">
                 <select id="modelSelect" onchange="setModel()">
                     <!-- ... (keep existing model options) ... -->
                 </select>
-                <button onclick="toggleSettings()">⚙️</button>
+                <select id="embedModelSelect" onchange="setEmbedModel()">
+                    <option value="">Select embedding model</option>
+                </select>
+                <button class="icon-button" onclick="startNewChat()" title="New Chat">🗨️</button>
+                <button class="icon-button" onclick="toggleSettings()" title="Settings">⚙️</button>
+
             </div>
         </header>
         <main>
@@ -454,9 +491,9 @@ footer {
                     <i class="fas fa-graduation-cap"></i>
                     Summarize the provided book in 12 lines!
                 </button>
-                <button class="option-btn" onclick="startChat('What is this book about?')">
+                <button class="option-btn" onclick="startChat('What is this text about?')">
                     <i class="fas fa-umbrella-beach"></i>
-                    What is this book about?
+                    What is this text about?
                 </button>
             </div>
             <div class="chat-area" id="chatArea"></div>
@@ -484,7 +521,7 @@ footer {
     </div>
 </div>
 <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf">
-
+</body>
     <script>
         let chatHistory = [];
         let currentChatId = null;
