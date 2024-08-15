@@ -205,7 +205,6 @@ def ask_question():
         logging.error(f"Error processing question: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/models', methods=['GET'])
 def get_models():
     models = config.get('available_models', [])
@@ -252,43 +251,41 @@ def refresh_models():
         return jsonify({"error": "Failed to fetch models"}), 500
 
 @app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
+def upload_files():
+    if 'files' not in request.files:
         return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        
-        # Check if embeddings already exist
-        vectorstore_folder = f"{os.path.splitext(filename)[0]}_vectorstore"
-        vectorstore_path = os.path.join(config['embeddings_path'], vectorstore_folder)
-        if os.path.exists(vectorstore_path):
-            logging.info("Embeddings already exist. Loading from existing vectorstore.")
-            vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-        else:
-            logging.info("No existing embeddings found. Creating new embeddings.")
-            # Process the new PDF
-            chunks = process_pdf(file_path)
-            vectorstore = FAISS.from_documents(chunks, embeddings)
-            vectorstore.save_local(vectorstore_path)
-        
-        # Update the global qa_chain with the new vectorstore
-        global qa_chain
-        qa_chain = create_qa_chain(vectorstore)
-
-        # Update the config to reflect the current PDF
-        config['pdf_file'] = filename
-        config['vectorstore_file'] = vectorstore_folder
-        config['last_selected_pdf'] = filename  # Add this line to save the last selected PDF
-        save_config(config)
-        
-        return jsonify({"message": "File uploaded successfully", "filename": filename}), 200
-    return jsonify({"error": "File type not allowed"}), 400
-
+    
+    files = request.files.getlist('files')
+    
+    if not files or files[0].filename == '':
+        return jsonify({"error": "No selected files"}), 400
+    
+    uploaded_files = []
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            uploaded_files.append(filename)
+            
+            # Process the PDF and create embeddings
+            vectorstore_folder = f"{os.path.splitext(filename)[0]}_vectorstore"
+            vectorstore_path = os.path.join(config['embeddings_path'], vectorstore_folder)
+            if not os.path.exists(vectorstore_path):
+                chunks = process_pdf(file_path)
+                vectorstore = FAISS.from_documents(chunks, embeddings)
+                vectorstore.save_local(vectorstore_path)
+            
+            # Update the config to reflect the current PDF
+            config['pdf_file'] = filename
+            config['vectorstore_file'] = vectorstore_folder
+            config['last_selected_pdf'] = filename
+            save_config(config)
+    
+    if uploaded_files:
+        return jsonify({"message": "Files uploaded successfully", "filenames": uploaded_files}), 200
+    else:
+        return jsonify({"error": "No valid files were uploaded"}), 400
 
 @app.route('/pdf/<filename>')
 def uploaded_file(filename):
@@ -330,7 +327,6 @@ def select_pdf():
     qa_chain = create_qa_chain(vectorstore)
 
     return jsonify({"message": "PDF selected and processed successfully"}), 200
-
 
 @app.route('/get_last_pdf', methods=['GET'])
 def get_last_pdf():
