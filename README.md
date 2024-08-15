@@ -2,7 +2,7 @@
 The chatbot is configured to use OpenAI embeddings for high-quality text processing and Ollama models for generating responses.
 
 
-<img width="1792" alt="Screenshot 2024-08-14 at 22 27 19" src="https://github.com/user-attachments/assets/c25259a3-5754-424e-836d-840dbd04347d">
+![Screenshot 2024-08-15 at 17 22 05](https://github.com/user-attachments/assets/12695043-dbcf-4e65-831f-715a74138c5c)
 
 
 
