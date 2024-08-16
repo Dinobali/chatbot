@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify, render_template, abort, send_from_dir
 from werkzeug.utils import secure_filename
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings, OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.llms import Ollama
@@ -47,7 +47,7 @@ def save_chat_history(history):
     with open(CHAT_HISTORY_FILE, 'w') as file:
         json.dump(history, file, indent=4)
 
-def fetch_available_models():
+def fetch_available_models(model_type='llm'):
     """Fetch available Ollama models."""
     try:
         result = subprocess.run(['ollama', 'list'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
@@ -58,22 +58,50 @@ def fetch_available_models():
         return []
 
     models = []
-    excluded_keywords = {'tge', 'bge', 'text', 'embed'}
+    embedding_keywords = {'tge', 'bge', 'text', 'embed'}
     for line in output.splitlines():
         if line.strip() and not line.startswith("NAME"):
             parts = line.split()
             if parts:
                 model_name = parts[0].strip()
-                if not any(keyword in model_name for keyword in excluded_keywords):
+                is_embedding_model = any(keyword in model_name.lower() for keyword in embedding_keywords)
+                if model_type == 'embeddings' and is_embedding_model:
+                    models.append(f"ollama:{model_name}")
+                elif model_type == 'llm' and not is_embedding_model:
                     models.append(model_name)
     return models
 
-def update_config_with_models(models):
+def update_config_with_models(models, model_type='llm'):
     """Update config with available models."""
     config = load_config()
-    config['available_models'] = models
+    if model_type == 'llm':
+        config['available_llm_models'] = models
+    elif model_type == 'embeddings':
+        ollama_models = models
+        openai_models = [
+            "openai:text-embedding-3-small",
+            "openai:text-embedding-3-large",
+            "openai:text-embedding-ada-002"
+        ]
+        other_models = [
+            "claude:embedding-v3",
+            "amazon:titan-embed-text-v1",
+            "google:embedding-001"
+        ]
+        config['available_embeddings_models'] = ollama_models + openai_models + other_models
     save_config(config)
-    logging.info("Config updated with latest models.")
+    logging.info(f"Config updated with latest {model_type} models.")
+
+def initialize_embeddings():
+    config = load_config()
+    embeddings_model = config['embeddings_model']
+    if embeddings_model.startswith('openai:'):
+        return OpenAIEmbeddings(model=embeddings_model.split(':')[1])
+    elif embeddings_model.startswith('ollama:'):
+        return OllamaEmbeddings(model=embeddings_model.split(':')[1])
+    # Add other embedding types here (Claude, Amazon, Google) when implemented
+    else:
+        raise ValueError(f"Unsupported embeddings model: {embeddings_model}")
 
 # Load configuration
 config = load_config()
@@ -82,7 +110,7 @@ config = load_config()
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 # Initialize OpenAI Embeddings
-embeddings = OpenAIEmbeddings(model=config['embeddings_model'])
+embeddings = initialize_embeddings()
 
 # Initialize Ollama LLM
 llm = Ollama(model=config['llm_model'])
@@ -144,7 +172,7 @@ def ask_question():
     if models:
         update_config_with_models(models)
 
-    if model not in config.get('available_models', []):
+    if model not in config.get('available_llm_models', []):
         return jsonify({"error": "Invalid model selected"}), 400
 
     logging.info(f"Received question: {question} using model: {model}")
@@ -155,9 +183,7 @@ def ask_question():
         llm = Ollama(model=model)
         
         # Reinitialize the qa_chain to use the latest vectorstore
-        vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
-        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-        qa_chain = create_qa_chain(vectorstore)
+        initialize_qa_chain()
 
         result = qa_chain({"query": question})
         answer = result['result']
@@ -207,48 +233,79 @@ def ask_question():
 
 @app.route('/models', methods=['GET'])
 def get_models():
-    models = config.get('available_models', [])
-    return jsonify({"models": models})
-
-@app.route('/history', methods=['GET'])
-def get_history():
-    history = load_chat_history()
-    return jsonify(history)
+    llm_models = fetch_available_models('llm')
+    embeddings_models = fetch_available_models('embeddings')
+    return jsonify({"llm_models": llm_models, "embeddings_models": embeddings_models})
 
 @app.route('/set_model', methods=['POST'])
 def set_model():
-    """Set the last chosen model."""
+    """Set the last chosen model for LLM or embeddings."""
     data = request.get_json()
     model = data.get('model')
+    model_type = data.get('type', 'llm')  # 'llm' or 'embeddings'
     if not model:
         abort(400, description="Model is required")
 
     # Refresh the available models before setting
-    models = fetch_available_models()
+    models = fetch_available_models(model_type)
     if models:
-        update_config_with_models(models)
+        update_config_with_models(models, model_type)
 
-    if model not in config.get("available_models", []):
+    config_key = 'available_llm_models' if model_type == 'llm' else 'available_embeddings_models'
+    if model not in config.get(config_key, []):
         abort(400, description="Model not available")
 
-    config["last_chosen_model"] = model
+    if model_type == 'llm':
+        config["last_chosen_llm_model"] = model
+        config["llm_model"] = model
+    else:
+        config["last_chosen_embeddings_model"] = model
+        config["embeddings_model"] = model
     save_config(config)
-    return jsonify({"message": "Model updated successfully", "last_chosen_model": model})
+    
+    # Reinitialize embeddings if embeddings model changed
+    if model_type == 'embeddings':
+        global embeddings
+        embeddings = initialize_embeddings()
+        # Update vectorstore_file to reflect the new embeddings model
+        if config['pdf_file']:
+            update_vectorstore_path()
+        initialize_qa_chain()  # Reinitialize the qa_chain with the new embedding model
+
+    return jsonify({"message": f"{model_type.capitalize()} model updated successfully", f"last_chosen_{model_type}_model": model})
+
+def update_vectorstore_path():
+    current_embedding_model = config['embeddings_model']
+    embeddings_folder = f"{current_embedding_model.replace(':', '_')}_embeddings"
+    vectorstore_folder = f"{os.path.splitext(config['pdf_file'])[0]}_{embeddings_folder}"
+    config['vectorstore_file'] = vectorstore_folder
+    save_config(config)
+    logging.info(f"Updated vectorstore path to: {vectorstore_folder}")
 
 @app.route('/get_last_model', methods=['GET'])
 def get_last_model():
-    """Get the last chosen model."""
-    return jsonify({"last_chosen_model": config.get("last_chosen_model", "")})
+    """Get the last chosen model for LLM and embeddings."""
+    return jsonify({
+        "last_chosen_llm_model": config.get("last_chosen_llm_model", ""),
+        "last_chosen_embeddings_model": config.get("last_chosen_embeddings_model", "")
+    })
 
 @app.route('/refresh_models', methods=['POST'])
 def refresh_models():
-    """Refresh the list of available models."""
-    models = fetch_available_models()
-    if models:
-        update_config_with_models(models)
-        return jsonify({"message": "Models refreshed successfully", "models": models})
-    else:
-        return jsonify({"error": "Failed to fetch models"}), 500
+    """Refresh the list of available models for both LLM and embeddings."""
+    llm_models = fetch_available_models('llm')
+    embeddings_models = fetch_available_models('embeddings')
+    
+    if llm_models:
+        update_config_with_models(llm_models, 'llm')
+    if embeddings_models:
+        update_config_with_models(embeddings_models, 'embeddings')
+    
+    return jsonify({
+        "message": "Models refreshed successfully",
+        "llm_models": llm_models,
+        "embeddings_models": embeddings_models
+    })
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
@@ -269,16 +326,10 @@ def upload_files():
             uploaded_files.append(filename)
             
             # Process the PDF and create embeddings
-            vectorstore_folder = f"{os.path.splitext(filename)[0]}_vectorstore"
-            vectorstore_path = os.path.join(config['embeddings_path'], vectorstore_folder)
-            if not os.path.exists(vectorstore_path):
-                chunks = process_pdf(file_path)
-                vectorstore = FAISS.from_documents(chunks, embeddings)
-                vectorstore.save_local(vectorstore_path)
+            process_pdf_and_create_embeddings(file_path, filename)
             
             # Update the config to reflect the current PDF
             config['pdf_file'] = filename
-            config['vectorstore_file'] = vectorstore_folder
             config['last_selected_pdf'] = filename
             save_config(config)
     
@@ -307,26 +358,21 @@ def select_pdf():
     logging.info(f"Selecting PDF: {selected_pdf}")
 
     config['pdf_file'] = selected_pdf
-    config['vectorstore_file'] = f"{os.path.splitext(selected_pdf)[0]}_vectorstore"
     config['last_selected_pdf'] = selected_pdf  # Save the last selected PDF
+    
+    # Update the vectorstore_file to reflect the current PDF and embedding model
+    update_vectorstore_path()
+    
     save_config(config)
     
     pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], selected_pdf)
-    vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
-    
-    if os.path.exists(vectorstore_path):
-        logging.info("Embeddings already exist. Loading from existing vectorstore.")
-        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-    else:
-        logging.info("No existing embeddings found. Creating new embeddings.")
-        chunks = process_pdf(pdf_path)
-        vectorstore = FAISS.from_documents(chunks, embeddings)
-        vectorstore.save_local(vectorstore_path)
-    
-    global qa_chain
-    qa_chain = create_qa_chain(vectorstore)
-
-    return jsonify({"message": "PDF selected and processed successfully"}), 200
+    try:
+        process_pdf_and_create_embeddings(pdf_path, selected_pdf)
+        initialize_qa_chain()
+        return jsonify({"message": "PDF selected and processed successfully"}), 200
+    except Exception as e:
+        logging.error(f"Error processing PDF: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/get_last_pdf', methods=['GET'])
 def get_last_pdf():
@@ -337,24 +383,104 @@ def calculate_confidence(source_docs):
     """Calculate confidence score based on the number of source documents."""
     return min(len(source_docs) / 3, 1.0)  # Adjust denominator as needed
 
+def process_pdf_and_create_embeddings(file_path, filename):
+    chunks = process_pdf(file_path)
+    
+    # Get the current embedding model
+    current_embedding_model = config['embeddings_model']
+    
+    # Create embeddings for the current embedding model
+    embeddings_folder = f"{current_embedding_model.replace(':', '_')}_embeddings"
+    vectorstore_folder = f"{os.path.splitext(filename)[0]}_{embeddings_folder}"
+    vectorstore_path = os.path.join(config['embeddings_path'], embeddings_folder, vectorstore_folder)
+    
+    if not os.path.exists(vectorstore_path):
+        # Initialize embeddings for the current model
+        current_embeddings = initialize_embeddings()
+        vectorstore = FAISS.from_documents(chunks, current_embeddings)
+        os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
+        vectorstore.save_local(vectorstore_path)
+        logging.info(f"Created and saved embeddings for {filename} using {current_embedding_model}")
+    else:
+        logging.info(f"Embeddings already exist for {filename} using {current_embedding_model}")
+
+    # Update the config to use the current vectorstore
+    config['vectorstore_file'] = vectorstore_folder
+    save_config(config)
+
+    # Verify that the vectorstore file was created
+    if not os.path.exists(os.path.join(vectorstore_path, "index.faiss")):
+        logging.error(f"Failed to create vectorstore file at {vectorstore_path}")
+        raise FileNotFoundError(f"Vectorstore file not found at {vectorstore_path}")
+
+def create_embeddings_for_all_pdfs():
+    pdf_folder = config['pdf_folder']
+    for filename in os.listdir(pdf_folder):
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(pdf_folder, filename)
+            try:
+                process_pdf_and_create_embeddings(file_path, filename)
+                logging.info(f"Successfully processed and created embeddings for {filename}")
+            except Exception as e:
+                logging.error(f"Error processing {filename}: {str(e)}")
+
+@app.route('/create_embeddings', methods=['POST'])
+def create_embeddings():
+    try:
+        create_embeddings_for_all_pdfs()
+        return jsonify({"message": "Embeddings created successfully for all PDFs"}), 200
+    except Exception as e:
+        logging.error(f"Error creating embeddings: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def initialize_qa_chain():
+    global qa_chain, embeddings
+    
+    # Use the current embedding model's vectorstore
+    current_embedding_model = config['embeddings_model']
+    embeddings_folder = f"{current_embedding_model.replace(':', '_')}_embeddings"
+    vectorstore_folder = f"{os.path.splitext(config['pdf_file'])[0]}_{embeddings_folder}"
+    vectorstore_path = os.path.join(config['embeddings_path'], embeddings_folder, vectorstore_folder)
+
+    if os.path.exists(vectorstore_path):
+        embeddings = initialize_embeddings()
+        try:
+            vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+            qa_chain = create_qa_chain(vectorstore)
+            logging.info(f"Successfully initialized QA chain with vectorstore from {vectorstore_path}")
+        except Exception as e:
+            logging.error(f"Error loading vectorstore from {vectorstore_path}: {str(e)}")
+            raise
+    else:
+        logging.error(f"Vectorstore not found for the current embedding model: {vectorstore_path}")
+        raise FileNotFoundError(f"Vectorstore not found at {vectorstore_path}")
+
 if __name__ == '__main__':
-    # Ensure the upload folder exists
+    # Ensure the upload folder and embeddings folder exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(config['embeddings_path'], exist_ok=True)
     
     # Fetch and update models on startup
-    models = fetch_available_models()
-    if models:
-        update_config_with_models(models)
+    llm_models = fetch_available_models('llm')
+    embeddings_models = fetch_available_models('embeddings')
+    if llm_models:
+        update_config_with_models(llm_models, 'llm')
+    if embeddings_models:
+        update_config_with_models(embeddings_models, 'embeddings')
+
+    # Create embeddings for all PDFs on startup
+    try:
+        create_embeddings_for_all_pdfs()
+    except Exception as e:
+        logging.error(f"Error creating embeddings on startup: {str(e)}")
 
     # Initialize the vectorstore and qa_chain
     pdf_path = os.path.join(config['pdf_folder'], config['pdf_file'])
-    vectorstore_path = os.path.join(config['embeddings_path'], config['vectorstore_file'])
-    if os.path.exists(vectorstore_path):
-        vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-    else:
-        chunks = process_pdf(pdf_path)
-        vectorstore = FAISS.from_documents(chunks, embeddings)
-        vectorstore.save_local(vectorstore_path)
-    qa_chain = create_qa_chain(vectorstore)
+    try:
+        process_pdf_and_create_embeddings(pdf_path, config['pdf_file'])
+        initialize_qa_chain()
+    except Exception as e:
+        logging.error(f"Error initializing application: {str(e)}")
+        # You might want to exit the application here or take appropriate action
 
     app.run(host='0.0.0.0', port=5005, debug=True)
