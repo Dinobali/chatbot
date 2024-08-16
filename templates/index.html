@@ -429,6 +429,18 @@ footer {
     }
 }
 
+.microphone-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .microphone-button.active {
+            color: red;
+        }
+
 @media (max-width: 600px) {
     .header-right {
         flex-wrap: wrap;
@@ -444,626 +456,756 @@ footer {
     }
 }
     </style>
-</head>
 <body>
-<div class="container" id="container">
-    <div class="sidebar" id="sidebar">
-        <button class="new-chat-btn" onclick="startNewChat()">
-            <span style="margin-right: 5px;">+</span>
-        </button>
-        <div class="sidebar-content">
-            <h2></h2>
-            <div id="chatHistory"></div>
+    <div class="container" id="container">
+        <div class="sidebar" id="sidebar">
+            <button class="new-chat-btn" onclick="startNewChat()">
+                <span style="margin-right: 5px;">+</span>
+            </button>
+            <div class="sidebar-content">
+                <h2>Chat History</h2>
+                <div id="chatHistory"></div>
+            </div>
+        </div>
+        <div class="main-content">
+            <header>
+                <div class="header-left">
+                    <h1></h1>
+                </div>
+                <div class="header-right">
+                    <button class="sidebar-toggle icon-button" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+                    <select id="pdfSelect">
+                        <option value="">Select a PDF</option>
+                    </select>
+                    <select id="modelSelect">
+                        <option value="">Select LLM model</option>
+                    </select>
+                    <select id="embedModelSelect">
+                        <option value="">Select embedding model</option>
+                    </select>
+                    <button class="icon-button" onclick="startNewChat()" title="New Chat">🗨️</button>
+                    <button class="icon-button" onclick="toggleSettings()" title="Settings">⚙️</button>
+                </div>
+            </header>
+            <main>
+                <div class="options-grid">
+                    <button class="option-btn" onclick="startChat('Who is the main character in the story?')">
+                        <i class="fas fa-paint-brush"></i>
+                        Who is the main character in the story?
+                    </button>
+                    <button class="option-btn" onclick="startChat('Who is the book author?')">
+                        <i class="fas fa-lightbulb"></i>
+                        Who is the book author?
+                    </button>
+                    <button class="option-btn" onclick="startChat('Summarize the provided book in 12 lines!')">
+                        <i class="fas fa-graduation-cap"></i>
+                        Summarize the provided book in 12 lines!
+                    </button>
+                    <button class="option-btn" onclick="startChat('What is this text about?')">
+                        <i class="fas fa-umbrella-beach"></i>
+                        What is this text about?
+                    </button>
+                </div>
+                <div class="chat-area" id="chatArea"></div>
+            </main>
+            <footer>
+                <div class="input-area">
+                    <button onclick="openFileInput()">📎</button>
+                    <textarea id="userInput" placeholder="Message Chatbot..." rows="1" oninput="autoResize(this)"></textarea>
+                    <button onclick="sendMessage()">➤</button>
+                </div>
+            </footer>
+        </div>
+        <div class="settings-dropdown" id="settingsDropdown">
+            <h3>Settings</h3>
+            <div class="setting-group">
+                <label for="themeSelect">Theme:</label>
+                <select id="themeSelect" onchange="toggleTheme(this.value)">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="fontSize">Font Size:</label>
+                <input type="range" id="fontSize" min="12" max="24" step="1" value="16" onchange="changeFontSize(this.value)">
+                <span id="fontSizeValue">16px</span>
+            </div>
+            <h4>API Keys</h4>
+            <div class="api-key-inputs">
+                <div class="setting-group">
+                    <label for="openaiKey">OpenAI API Key:</label>
+                    <input type="password" id="openaiKey" placeholder="Enter OpenAI API Key">
+                </div>
+                <div class="setting-group">
+                    <label for="claudeKey">Claude.ai API Key:</label>
+                    <input type="password" id="claudeKey" placeholder="Enter Claude.ai API Key">
+                </div>
+                <div class="setting-group">
+                    <label for="googleKey">Google Embeddings API Key:</label>
+                    <input type="password" id="googleKey" placeholder="Enter Google Embeddings API Key">
+                </div>
+                <div class="setting-group">
+                    <label for="amazonKey">Amazon Bedrock Embeddings API Key:</label>
+                    <input type="password" id="amazonKey" placeholder="Enter Amazon Bedrock API Key">
+                </div>
+            </div>
+            <button id="saveApiKeys">Save API Keys</button>
         </div>
     </div>
-    <div class="main-content">
-        <header>
-            <div class="header-left">
-                <h1></h1>
-            </div>
-            <div class="header-right">
-                <button class="sidebar-toggle icon-button" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
-                <select id="pdfSelect" onchange="selectPDF()">
-                    <option value="">Select a PDF</option>
-                </select>
-                <select id="modelSelect" onchange="setModel()">
-                    <option value="">Select LLM model</option>
-                </select>
-                <select id="embedModelSelect" onchange="setEmbedModel()">
-                    <option value="">Select embedding model</option>
-                </select>
-                <button class="icon-button" onclick="startNewChat()" title="New Chat">🗨️</button>
-                <button class="icon-button" onclick="toggleSettings()" title="Settings">⚙️</button>
-            </div>
-        </header>
-        <main>
-            <div class="options-grid">
-                <button class="option-btn" onclick="startChat('Who is the main character in the story?')">
-                    <i class="fas fa-paint-brush"></i>
-                    Who is the main character in the story?
-                </button>
-                <button class="option-btn" onclick="startChat('Who is the book author?')">
-                    <i class="fas fa-lightbulb"></i>
-                    Who is the book author?
-                </button>
-                <button class="option-btn" onclick="startChat('Summarize the provided book in 12 lines!')">
-                    <i class="fas fa-graduation-cap"></i>
-                    Summarize the provided book in 12 lines!
-                </button>
-                <button class="option-btn" onclick="startChat('What is this text about?')">
-                    <i class="fas fa-umbrella-beach"></i>
-                    What is this text about?
-                </button>
-            </div>
-            <div class="chat-area" id="chatArea"></div>
-        </main>
-        <footer>
-            <div class="input-area">
-                <button onclick="openFileInput()">📎</button>
-                <textarea id="userInput" placeholder="Message Chatbot..." rows="1" oninput="autoResize(this)"></textarea>
-                <button onclick="sendMessage()">➤</button>
-            </div>
-        </footer>
-    </div>
-    <div class="settings-dropdown" id="settingsDropdown">
-        <label>
-            Theme:
-            <select onchange="toggleTheme(this.value)">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-            </select>
-        </label>
-        <label>
-            Font Size:
-            <input type="range" min="12" max="24" value="16" onchange="changeFontSize(this.value)">
-        </label>
-    </div>
-</div>
-<input type="file" id="fileInput" style="display: none;" multiple accept=".pdf">
-</body>
+    <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf">
+    
+    </body>
 <script>
-    let chatHistory = [];
-    let currentChatId = null;
+let chatHistory = [];
+let currentChatId = null;
 
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.querySelector('.main-content');
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
 
-        sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('hidden');
 
-        if (sidebar.classList.contains('hidden')) {
-            mainContent.classList.add('full-width');
-            mainContent.style.marginLeft = "0";
-        } else {
-            mainContent.classList.remove('full-width');
-            mainContent.style.marginLeft = "250px";  // Adjust based on the sidebar width
-        }
+    if (sidebar.classList.contains('hidden')) {
+        mainContent.classList.add('full-width');
+        mainContent.style.marginLeft = "0";
+    } else {
+        mainContent.classList.remove('full-width');
+        mainContent.style.marginLeft = "250px";  // Adjust based on the sidebar width
     }
+}
 
-    document.querySelectorAll('.option-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const message = this.getAttribute('data-message');
-            if (message) {
-                document.getElementById('userInput').value = message;
-                sendMessage();
-            }
-        });
-    });
-
-    function startChat(prompt) {
-        console.log('startChat called with prompt:', prompt);
-
-        var chatOptions = document.getElementById('chatOptions');
-        if (chatOptions) {
-            chatOptions.style.display = 'none';
-            console.log('chatOptions element found and hidden');
-        } else {
-            console.error('chatOptions element not found');
-        }
-
-        var chatArea = document.getElementById('chatArea');
-        if (chatArea) {
-            chatArea.style.display = 'block';
-            console.log('chatArea element found and displayed');
-        } else {
-            console.error('chatArea element not found');
-        }
-
-        var userInput = document.getElementById('userInput');
-        if (userInput) {
-            userInput.value = prompt;
-            console.log('User input set to:', prompt);
+document.querySelectorAll('.option-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const message = this.getAttribute('data-message');
+        if (message) {
+            document.getElementById('userInput').value = message;
             sendMessage();
-            console.log('sendMessage function called');
-        } else {
-            console.error('userInput element not found');
-        }
-    }
-
-    function toggleSettings() {
-        const settings = document.getElementById('settingsDropdown');
-        settings.style.display = settings.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function toggleTheme(theme) {
-        document.body.classList.toggle('light-mode', theme === 'light');
-    }
-
-    function changeFontSize(size) {
-        document.body.style.fontSize = size + 'px';
-    }
-
-    function openFileInput() {
-        document.getElementById('fileInput').click();
-    }
-
-    document.getElementById('fileInput').addEventListener('change', (event) => {
-        const files = event.target.files;
-        if (files.length > 0) {
-            uploadFiles(files);
         }
     });
+});
 
-    async function uploadFiles(files) {
-        const formData = new FormData();
-        for (let file of files) {
-            formData.append('files', file);
+// Add this new code for handling API key saving
+document.getElementById('saveApiKeys').addEventListener('click', function() {
+    const apiKeys = {
+        openai: document.getElementById('openaiKey').value,
+        claude: document.getElementById('claudeKey').value,
+        google: document.getElementById('googleKey').value,
+        amazon: document.getElementById('amazonKey').value
+    };
+
+    fetch('/save_api_keys', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiKeys),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        alert('An error occurred while saving the API keys.');
+    });
+});
+
+function startChat(prompt) {
+    console.log('startChat called with prompt:', prompt);
+
+    var chatOptions = document.getElementById('chatOptions');
+    if (chatOptions) {
+        chatOptions.style.display = 'none';
+        console.log('chatOptions element found and hidden');
+    } else {
+        console.error('chatOptions element not found');
+    }
+
+    var chatArea = document.getElementById('chatArea');
+    if (chatArea) {
+        chatArea.style.display = 'block';
+        console.log('chatArea element found and displayed');
+    } else {
+        console.error('chatArea element not found');
+    }
+
+    var userInput = document.getElementById('userInput');
+    if (userInput) {
+        userInput.value = prompt;
+        console.log('User input set to:', prompt);
+        sendMessage();
+        console.log('sendMessage function called');
+    } else {
+        console.error('userInput element not found');
+    }
+}
+
+function toggleSettings() {
+    const settings = document.getElementById('settingsDropdown');
+    settings.style.display = settings.style.display === 'block' ? 'none' : 'block';
+}
+
+function toggleTheme(theme) {
+    document.body.classList.toggle('light-mode', theme === 'light');
+}
+
+function changeFontSize(size) {
+    document.body.style.fontSize = size + 'px';
+}
+
+function openFileInput() {
+    document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', (event) => {
+    const files = event.target.files;
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
+});
+
+async function uploadFiles(files) {
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
         }
+
+        const result = await response.json();
+        console.log('Files uploaded successfully:', result.filenames);
+        
+        const fileNames = result.filenames.join(', ');
+        appendMessage('system', `Files "${fileNames}" uploaded successfully. You can now ask questions about these documents.`);
+        
+        await loadPDFList();
+    } catch (error) {
+        console.error('Error uploading files:', error);
+        appendMessage('system', 'Error uploading files. Please try again.');
+    }
+}
+
+function startNewChat() {
+    document.getElementById('chatArea').innerHTML = '';
+    document.getElementById('chatOptions').style.display = 'block';
+    document.getElementById('chatArea').style.display = 'none';
+    currentChatId = Date.now();
+    chatHistory.push({ id: currentChatId, messages: [] });
+    updateChatHistory();
+}
+
+async function sendMessage() {
+    const userInput = document.getElementById('userInput');
+    const modelSelect = document.getElementById('modelSelect');
+    const selectedModel = modelSelect.value;
+    const message = userInput.value.trim();
+    
+    if (message) {
+        document.querySelector('.options-grid').style.display = 'none';
+        document.getElementById('chatArea').style.display = 'block';
+
+        appendMessage('user', message);
+        if (!currentChatId) {
+            currentChatId = Date.now();
+            chatHistory.push({ id: currentChatId, messages: [] });
+        }
+        chatHistory[chatHistory.length - 1].messages.push({ role: 'user', content: message });
+        updateChatHistory();
+
+        userInput.value = '';
+        autoResize(userInput);
 
         try {
-            const response = await fetch('/upload', {
+            const response = await fetch('/ask', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    question: message,
+                    model: selectedModel
+                })
             });
 
-            if (!response.ok) {
-                throw new Error('Upload failed');
-            }
-
-            const result = await response.json();
-            console.log('Files uploaded successfully:', result.filenames);
-            
-            const fileNames = result.filenames.join(', ');
-            appendMessage('system', `Files "${fileNames}" uploaded successfully. You can now ask questions about these documents.`);
-            
-            await loadPDFList();
-        } catch (error) {
-            console.error('Error uploading files:', error);
-            appendMessage('system', 'Error uploading files. Please try again.');
-        }
-    }
-
-    function startNewChat() {
-        document.getElementById('chatArea').innerHTML = '';
-        document.getElementById('chatOptions').style.display = 'block';
-        document.getElementById('chatArea').style.display = 'none';
-        currentChatId = Date.now();
-        chatHistory.push({ id: currentChatId, messages: [] });
-        updateChatHistory();
-    }
-
-    async function sendMessage() {
-        const userInput = document.getElementById('userInput');
-        const modelSelect = document.getElementById('modelSelect');
-        const selectedModel = modelSelect.value;
-        const message = userInput.value.trim();
-        
-        if (message) {
-            document.querySelector('.options-grid').style.display = 'none';
-            document.getElementById('chatArea').style.display = 'block';
-
-            appendMessage('user', message);
-            if (!currentChatId) {
-                currentChatId = Date.now();
-                chatHistory.push({ id: currentChatId, messages: [] });
-            }
-            chatHistory[chatHistory.length - 1].messages.push({ role: 'user', content: message });
-            updateChatHistory();
-
-            try {
-                const response = await fetch('/ask', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        question: message,
-                        model: selectedModel
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-
-                const data = await response.json();
-                appendMessage('bot', data.Answer);
-                chatHistory[chatHistory.length - 1].messages.push({ role: 'bot', content: data.Answer });
-                updateChatHistory();
-
-            } catch (error) {
-                console.error('Error:', error);
-                appendMessage('bot', 'Sorry, there was an error processing your request.');
-            }
-
-            userInput.value = '';
-            autoResize(userInput);
-        }
-    }
-
-    function appendMessage(role, content) {
-        const chatArea = document.getElementById('chatArea');
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', `${role}-message`);
-        messageDiv.innerHTML = `
-            ${content}
-            <div class="message-actions">
-                <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
-                <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
-                <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
-                <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
-                <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
-            </div>
-        `;
-        chatArea.appendChild(messageDiv);
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
-
-    function updateChatHistory() {
-        const chatHistoryDiv = document.getElementById('chatHistory');
-        chatHistoryDiv.innerHTML = '';
-
-        chatHistory.forEach((chat, index) => {
-            const latestMessage = chat.messages.length > 0 
-                ? chat.messages[chat.messages.length - 1].content.substring(0, 30) + '...' 
-                : 'Empty';
-
-            const chatDiv = document.createElement('div');
-            chatDiv.textContent = latestMessage;
-            chatDiv.onclick = () => loadChat(chat.id);
-            chatDiv.classList.add('chat-history-item');
-            chatHistoryDiv.appendChild(chatDiv);
-        });
-    }
-
-    function loadChat(chatId) {
-        currentChatId = chatId;
-        const chat = chatHistory.find(c => c.id === chatId);
-        document.getElementById('chatArea').innerHTML = '';
-        chat.messages.forEach(msg => {
-            appendMessage(msg.role, msg.content);
-        });
-        document.getElementById('chatOptions').style.display = 'none';
-        document.getElementById('chatArea').style.display = 'block';
-    }
-
-    async function loadChatHistory() {
-        try {
-            const response = await fetch('/chat_history');
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-            const data = await response.json();
-            chatHistory = data;
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let botResponse = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.slice(5));
+                        
+                        if (data.status === 'processing') {
+                            // Optionally show a "thinking" indicator here
+                        } else if (data.status === 'complete') {
+                            // Finalize the response
+                        } else if (data.Answer) {
+                            botResponse += data.Answer;
+                            updateBotMessage(botResponse);
+                        } else if (data.error) {
+                            throw new Error(data.error);
+                        }
+                    }
+                }
+            }
+
+            // Final update to the bot message
+            updateBotMessage(botResponse);
+            chatHistory[chatHistory.length - 1].messages.push({ role: 'bot', content: botResponse });
             updateChatHistory();
-        } catch (error) {
-            console.error('Error loading chat history:', error);
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', async function() {
-        try {
-            await loadPDFList();
-
-            const modelsResponse = await fetch('/models');
-            const modelsData = await modelsResponse.json();
-            const modelSelect = document.getElementById('modelSelect');
-            const embedModelSelect = document.getElementById('embedModelSelect');
-
-            const lastModelResponse = await fetch('/get_last_model');
-            const lastModelData = await lastModelResponse.json();
-            const lastChosenLLMModel = lastModelData.last_chosen_llm_model;
-            const lastChosenEmbeddingsModel = lastModelData.last_chosen_embeddings_model;
-
-            modelsData.llm_models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                if (model === lastChosenLLMModel) {
-                    option.selected = true;
-                }
-                modelSelect.appendChild(option);
-            });
-
-            modelsData.embeddings_models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                if (model === lastChosenEmbeddingsModel) {
-                    option.selected = true;
-                }
-                embedModelSelect.appendChild(option);
-            });
-
-            if (lastChosenLLMModel) {
-                document.getElementById('current-model').textContent = `Current LLM Model: ${lastChosenLLMModel}`;
-            }
-            if (lastChosenEmbeddingsModel) {
-                document.getElementById('current-embed-model').textContent = `Current Embeddings Model: ${lastChosenEmbeddingsModel}`;
-            }
-
-            loadChatHistory();
 
         } catch (error) {
-            console.error('Error during initialization:', error);
-        }
-    });
-
-    function setModel(model, type) {
-        fetch('/set_model', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ model: model, type: type })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message) {
-                if (type === 'llm') {
-                    document.getElementById('current-model').textContent = `Current LLM Model: ${model}`;
-                } else if (type === 'embeddings') {
-                    document.getElementById('current-embed-model').textContent = `Current Embeddings Model: ${model}`;
-                }
-            } else {
-                alert('Error updating model');
-            }
-        })
-        .catch(error => console.error('Error setting model:', error));
-    }
-
-    document.getElementById('modelSelect').addEventListener('change', function() {
-        setModel(this.value, 'llm');
-    });
-
-    document.getElementById('embedModelSelect').addEventListener('change', function() {
-        setModel(this.value, 'embeddings');
-    });
-
-    function copyMessage(button) {
-        const messageDiv = button.closest('.message');
-        const messageContent = messageDiv.firstChild.textContent.trim();
-        navigator.clipboard.writeText(messageContent).then(() => {
-            button.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => {
-                button.innerHTML = '<i class="far fa-copy"></i>';
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy message: ', err);
-        });
-    }
-
-    function editMessage(button) {
-        const messageDiv = button.closest('.message');
-        const messageContent = messageDiv.firstChild.textContent.trim();
-        const editBox = document.createElement('textarea');
-        editBox.classList.add('edit-box');
-        editBox.value = messageContent;
-        messageDiv.innerHTML = '';
-        messageDiv.appendChild(editBox);
-        
-        const saveButton = document.createElement('button');
-        saveButton.innerHTML = '<i class="fas fa-save"></i>';
-        saveButton.onclick = () => saveEdit(messageDiv, editBox);
-        messageDiv.appendChild(saveButton);
-        
-        editBox.focus();
-    }
-
-    function saveEdit(messageDiv, editBox) {
-        const newContent = editBox.value.trim();
-        if (newContent) {
-            messageDiv.innerHTML = newContent;
-            appendMessageActions(messageDiv);
-            
-            const chatIndex = chatHistory.findIndex(chat => chat.id === currentChatId);
-            const messageIndex = Array.from(messageDiv.parentElement.children).indexOf(messageDiv);
-            chatHistory[chatIndex].messages[messageIndex].content = newContent;
-            updateChatHistory();
+            console.error('Error:', error);
+            appendMessage('bot', 'Sorry, there was an error processing your request.');
         }
     }
+}
 
-    function readAloud(button) {
-        const messageDiv = button.closest('.message');
-        const messageContent = messageDiv.firstChild.textContent.trim();
-        const utterance = new SpeechSynthesisUtterance(messageContent);
-        speechSynthesis.speak(utterance);
+function updateBotMessage(content) {
+    let botMessageDiv = document.querySelector('.bot-message:last-child');
+    if (!botMessageDiv) {
+        botMessageDiv = document.createElement('div');
+        botMessageDiv.classList.add('message', 'bot-message');
+        document.getElementById('chatArea').appendChild(botMessageDiv);
     }
+    botMessageDiv.innerHTML = content;
+    document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
+}
 
-    function regenerateMessage(button) {
-        const messageDiv = button.closest('.message');
-        console.log('Regenerate message');
-    }
-
-    function likeMessage(button) {
-        button.classList.toggle('liked');
-        if (button.classList.contains('liked')) {
-            button.innerHTML = '<i class="fas fa-thumbs-up"></i>';
-        } else {
-            button.innerHTML = '<i class="far fa-thumbs-up"></i>';
-        }
-    }
-
-    function appendMessageActions(messageDiv) {
-        const actionsDiv = document.createElement('div');
-        actionsDiv.classList.add('message-actions');
-        actionsDiv.innerHTML = `
+function appendMessage(role, content) {
+    const chatArea = document.getElementById('chatArea');
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message', `${role}-message`);
+    messageDiv.innerHTML = `
+        ${content}
+        <div class="message-actions">
             <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
             <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
             <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
             <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
             <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
-        `;
-        messageDiv.appendChild(actionsDiv);
-    }
+        </div>
+    `;
+    chatArea.appendChild(messageDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
 
-    function autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = (textarea.scrollHeight) + 'px';
-    }
+function updateChatHistory() {
+    const chatHistoryDiv = document.getElementById('chatHistory');
+    chatHistoryDiv.innerHTML = '';
 
-    document.getElementById('userInput').addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
+    chatHistory.forEach((chat, index) => {
+        const latestMessage = chat.messages.length > 0 
+            ? chat.messages[chat.messages.length - 1].content.substring(0, 30) + '...' 
+            : 'Empty';
+
+        const chatDiv = document.createElement('div');
+        chatDiv.textContent = latestMessage;
+        chatDiv.onclick = () => loadChat(chat.id);
+        chatDiv.classList.add('chat-history-item');
+        chatHistoryDiv.appendChild(chatDiv);
     });
+}
 
-    document.getElementById('fileInput').addEventListener('change', (event) => {
-        const files = event.target.files;
-        console.log('Files selected:', files);
+function loadChat(chatId) {
+    currentChatId = chatId;
+    const chat = chatHistory.find(c => c.id === chatId);
+    document.getElementById('chatArea').innerHTML = '';
+    chat.messages.forEach(msg => {
+        appendMessage(msg.role, msg.content);
     });
+    document.getElementById('chatOptions').style.display = 'none';
+    document.getElementById('chatArea').style.display = 'block';
+}
 
-    startNewChat();
+document.addEventListener('DOMContentLoaded', function() {
+    loadChatHistory();
+});
 
-    async function loadPDFList() {
-        try {
-            const response = await fetch('/pdf_list');
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            const data = await response.json();
-            const pdfSelect = document.getElementById('pdfSelect');
-            data.pdf_files.forEach(pdf => {
-                const option = document.createElement('option');
-                option.value = pdf;
-                option.textContent = pdf;
-                pdfSelect.appendChild(option);
+function loadChatHistory() {
+    fetch('/get_chat_history')
+        .then(response => response.json())
+        .then(history => {
+            const chatHistory = document.getElementById('chatHistory');
+            chatHistory.innerHTML = ''; // Clear existing content
+            history.forEach((item, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'chat-history-item';
+                historyItem.innerHTML = `Q: ${item.question.substring(0, 30)}...`;
+                historyItem.onclick = () => showFullConversation(index);
+                chatHistory.appendChild(historyItem);
             });
+        })
+        .catch(error => console.error('Error loading chat history:', error));
+}
 
-            pdfSelect.addEventListener('change', function() {
-                if (this.value) {
-                    selectPDF(this.value);
-                }
-            });
-        } catch (error) {
-            console.error('Error loading PDF list:', error);
-        }
-    }
+function showFullConversation(index) {
+    fetch('/get_chat_history')
+        .then(response => response.json())
+        .then(history => {
+            const item = history[index];
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = `
+                <div><strong>Question:</strong> ${item.question}</div>
+                <div><strong>Answer:</strong> ${item.answer}</div>
+                <div><strong>Confidence Score:</strong> ${item.confidence_score}</div>
+                <div><strong>Page:</strong> ${item.page}</div>
+                <div><strong>Source:</strong> ${item.source}</div>
+            `;
+        })
+        .catch(error => console.error('Error fetching full conversation:', error));
+}
 
-    async function selectPDF(pdfFile) {
-        console.log('selectPDF called with:', pdfFile);
-        try {
-            const response = await fetch('/select_pdf', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ pdf_file: pdfFile })
-            });
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await loadPDFList();
+        await getLastSelectedPDF();
 
-            const data = await response.json();
-            if (response.ok) {
-                console.log('PDF selection successful:', data);
-                appendMessage('system', `PDF "${pdfFile}" selected and processed successfully. You can now ask questions about this document.`);
-            } else {
-                throw new Error(data.error || 'Failed to select PDF');
-            }
-        } catch (error) {
-            console.error('Error selecting PDF:', error);
-            appendMessage('system', 'Error selecting PDF. Please try again.');
-        }
-    }
-
-    // Event listener for PDF selection
-    document.getElementById('pdfSelect').addEventListener('change', function() {
-        if (this.value) {
-            selectPDF(this.value);
-        }
-    });
-
-    // Load PDF list on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        loadPDFList();
-        // Note: The rest of the DOMContentLoaded logic is already included in the previous section
-    });
-
-    // Function to refresh available models
-    async function refreshModels() {
-        try {
-            const response = await fetch('/refresh_models', {
-                method: 'POST'
-            });
-            if (!response.ok) {
-                throw new Error('Failed to refresh models');
-            }
-            const data = await response.json();
-            console.log('Models refreshed:', data);
-
-            // Update the model select dropdowns
-            updateModelDropdowns(data.llm_models, data.embeddings_models);
-        } catch (error) {
-            console.error('Error refreshing models:', error);
-            alert('Failed to refresh models. Please try again.');
-        }
-    }
-
-    // Function to update model dropdowns
-    function updateModelDropdowns(llmModels, embeddingsModels) {
+        const modelsResponse = await fetch('/models');
+        const modelsData = await modelsResponse.json();
         const modelSelect = document.getElementById('modelSelect');
         const embedModelSelect = document.getElementById('embedModelSelect');
 
-        // Clear existing options
-        modelSelect.innerHTML = '<option value="">Select LLM model</option>';
-        embedModelSelect.innerHTML = '<option value="">Select embedding model</option>';
+        const lastModelResponse = await fetch('/get_last_model');
+        const lastModelData = await lastModelResponse.json();
+        const lastChosenLLMModel = lastModelData.last_chosen_llm_model;
+        const lastChosenEmbeddingsModel = lastModelData.last_chosen_embeddings_model;
 
-        // Add new options
-        llmModels.forEach(model => {
+        modelsData.llm_models.forEach(model => {
             const option = document.createElement('option');
             option.value = model;
             option.textContent = model;
+            if (model === lastChosenLLMModel) {
+                option.selected = true;
+            }
             modelSelect.appendChild(option);
         });
 
-        embeddingsModels.forEach(model => {
+        modelsData.embeddings_models.forEach(model => {
             const option = document.createElement('option');
             option.value = model;
             option.textContent = model;
+            if (model === lastChosenEmbeddingsModel) {
+                option.selected = true;
+            }
             embedModelSelect.appendChild(option);
         });
-    }
 
-    // Add event listener for a refresh models button (if you have one)
-    const refreshModelsButton = document.getElementById('refreshModelsButton');
-    if (refreshModelsButton) {
-        refreshModelsButton.addEventListener('click', refreshModels);
-    }
-
-    // Function to get the last selected PDF
-    async function getLastSelectedPDF() {
-        try {
-            const response = await fetch('/get_last_pdf');
-            if (!response.ok) {
-                throw new Error('Failed to get last selected PDF');
-            }
-            const data = await response.json();
-            if (data.last_selected_pdf) {
-                const pdfSelect = document.getElementById('pdfSelect');
-                pdfSelect.value = data.last_selected_pdf;
-                console.log('Last selected PDF set:', data.last_selected_pdf);
-            }
-        } catch (error) {
-            console.error('Error getting last selected PDF:', error);
+        if (lastChosenLLMModel) {
+            document.getElementById('current-model').textContent = `Current LLM Model: ${lastChosenLLMModel}`;
         }
-    }
+        if (lastChosenEmbeddingsModel) {
+            document.getElementById('current-embed-model').textContent = `Current Embeddings Model: ${lastChosenEmbeddingsModel}`;
+        }
 
-    // Call this function when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        getLastSelectedPDF();
-        // Other existing DOMContentLoaded logic...
+        loadChatHistory();
+
+    } catch (error) {
+        console.error('Error during initialization:', error);
+    }
+});
+
+function setModel(model, type) {
+    fetch('/set_model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ model: model, type: type })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            if (type === 'llm') {
+                document.getElementById('current-model').textContent = `Current LLM Model: ${model}`;
+            } else if (type === 'embeddings') {
+                document.getElementById('current-embed-model').textContent = `Current Embeddings Model: ${model}`;
+            }
+        } else {
+            alert('Error updating model');
+        }
+    })
+    .catch(error => console.error('Error setting model:', error));
+}
+
+document.getElementById('modelSelect').addEventListener('change', function() {
+    setModel(this.value, 'llm');
+});
+
+document.getElementById('embedModelSelect').addEventListener('change', function() {
+    setModel(this.value, 'embeddings');
+});
+
+function copyMessage(button) {
+    const messageDiv = button.closest('.message');
+    const messageContent = messageDiv.firstChild.textContent.trim();
+    navigator.clipboard.writeText(messageContent).then(() => {
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            button.innerHTML = '<i class="far fa-copy"></i>';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy message: ', err);
+    });
+}
+
+function editMessage(button) {
+    const messageDiv = button.closest('.message');
+    const messageContent = messageDiv.firstChild.textContent.trim();
+    const editBox = document.createElement('textarea');
+    editBox.classList.add('edit-box');
+    editBox.value = messageContent;
+    messageDiv.innerHTML = '';
+    messageDiv.appendChild(editBox);
+    
+    const saveButton = document.createElement('button');
+    saveButton.innerHTML = '<i class="fas fa-save"></i>';
+    saveButton.onclick = () => saveEdit(messageDiv, editBox);
+    messageDiv.appendChild(saveButton);
+    
+    editBox.focus();
+}
+
+function saveEdit(messageDiv, editBox) {
+    const newContent = editBox.value.trim();
+    if (newContent) {
+        messageDiv.innerHTML = newContent;
+        appendMessageActions(messageDiv);
+        
+        const chatIndex = chatHistory.findIndex(chat => chat.id === currentChatId);
+        const messageIndex = Array.from(messageDiv.parentElement.children).indexOf(messageDiv);
+        chatHistory[chatIndex].messages[messageIndex].content = newContent;
+        updateChatHistory();
+    }
+}
+
+function readAloud(button) {
+    const messageDiv = button.closest('.message');
+    const messageContent = messageDiv.firstChild.textContent.trim();
+    const utterance = new SpeechSynthesisUtterance(messageContent);
+    speechSynthesis.speak(utterance);
+}
+
+function regenerateMessage(button) {
+    const messageDiv = button.closest('.message');
+    console.log('Regenerate message');
+}
+
+function likeMessage(button) {
+    button.classList.toggle('liked');
+    if (button.classList.contains('liked')) {
+        button.innerHTML = '<i class="fas fa-thumbs-up"></i>';
+    } else {
+        button.innerHTML = '<i class="far fa-thumbs-up"></i>';
+    }
+}
+
+function appendMessageActions(messageDiv) {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.classList.add('message-actions');
+    actionsDiv.innerHTML = `
+        <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
+        <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
+        <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
+        <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
+        <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
+    `;
+    messageDiv.appendChild(actionsDiv);
+}
+
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+}
+
+document.getElementById('userInput').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+
+document.getElementById('fileInput').addEventListener('change', (event) => {
+    const files = event.target.files;
+    console.log('Files selected:', files);
+});
+
+startNewChat();
+
+async function loadPDFList() {
+    try {
+        const response = await fetch('/pdf_list');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        const pdfSelect = document.getElementById('pdfSelect');
+        pdfSelect.innerHTML = '<option value="">Select a PDF</option>'; // Clear existing options
+        data.pdf_files.forEach(pdf => {
+            const option = document.createElement('option');
+            option.value = pdf;
+            option.textContent = pdf;
+            pdfSelect.appendChild(option);
+        });
+
+        pdfSelect.addEventListener('change', function() {
+            if (this.value) {
+                selectPDF(this.value);
+            }
+        });
+    } catch (error) {
+        console.error('Error loading PDF list:', error);
+    }
+}
+
+async function selectPDF(pdfFile) {
+    console.log('selectPDF called with:', pdfFile);
+    try {
+        const response = await fetch('/select_pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ pdf_file: pdfFile })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            console.log('PDF selection successful:', data);
+            appendMessage('system', `PDF "${pdfFile}" selected and processed successfully. You can now ask questions about this document.`);
+        } else {
+            throw new Error(data.error || 'Failed to select PDF');
+        }
+    } catch (error) {
+        console.error('Error selecting PDF:', error);
+        appendMessage('system', 'Error selecting PDF. Please try again.');
+    }
+}
+
+// Event listener for PDF selection
+document.getElementById('pdfSelect').addEventListener('change', function() {
+    if (this.value) {
+        selectPDF(this.value);
+    }
+});
+
+// Function to refresh available models
+async function refreshModels() {
+    try {
+        const response = await fetch('/refresh_models', {
+            method: 'POST'
+        });
+        if (!response.ok) {
+            throw new Error('Failed to refresh models');
+        }
+        const data = await response.json();
+        console.log('Models refreshed:', data);
+
+        // Update the model select dropdowns
+        updateModelDropdowns(data.llm_models, data.embeddings_models);
+    } catch (error) {
+        console.error('Error refreshing models:', error);
+        alert('Failed to refresh models. Please try again.');
+    }
+}
+
+// Function to update model dropdowns
+function updateModelDropdowns(llmModels, embeddingsModels) {
+    const modelSelect = document.getElementById('modelSelect');
+    const embedModelSelect = document.getElementById('embedModelSelect');
+
+    // Clear existing options
+    modelSelect.innerHTML = '<option value="">Select LLM model</option>';
+    embedModelSelect.innerHTML = '<option value="">Select embedding model</option>';
+
+    // Add new options
+    llmModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelSelect.appendChild(option);
     });
 
+    embeddingsModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        embedModelSelect.appendChild(option);
+    });
+}
+
+// Add event listener for a refresh models button (if you have one)
+const refreshModelsButton = document.getElementById('refreshModelsButton');
+if (refreshModelsButton) {
+    refreshModelsButton.addEventListener('click', refreshModels);
+}
+
+// Function to get the last selected PDF
+async function getLastSelectedPDF() {
+    try {
+        const response = await fetch('/get_last_pdf');
+        if (!response.ok) {
+            throw new Error('Failed to get last selected PDF');
+        }
+        const data = await response.json();
+        if (data.last_selected_pdf) {
+            const pdfSelect = document.getElementById('pdfSelect');
+            pdfSelect.value = data.last_selected_pdf;
+            console.log('Last selected PDF set:', data.last_selected_pdf);
+        }
+    } catch (error) {
+        console.error('Error getting last selected PDF:', error);
+    }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await loadPDFList();
+        await getLastSelectedPDF();
+        await loadChatHistory();
+        
+        const modelsResponse = await fetch('/models');
+        const modelsData = await modelsResponse.json();
+        updateModelDropdowns(modelsData.llm_models, modelsData.embeddings_models);
+
+        const lastModelResponse = await fetch('/get_last_model');
+        const lastModelData = await lastModelResponse.json();
+        
+        if (lastModelData.last_chosen_llm_model) {
+            document.getElementById('modelSelect').value = lastModelData.last_chosen_llm_model;
+            document.getElementById('current-model').textContent = `Current LLM Model: ${lastModelData.last_chosen_llm_model}`;
+        }
+        
+        if (lastModelData.last_chosen_embeddings_model) {
+            document.getElementById('embedModelSelect').value = lastModelData.last_chosen_embeddings_model;
+            document.getElementById('current-embed-model').textContent = `Current Embeddings Model: ${lastModelData.last_chosen_embeddings_model}`;
+        }
+
+    } catch (error) {
+        console.error('Error during initialization:', error);
+    }
+});
 </script>
 </body>
 </html>
