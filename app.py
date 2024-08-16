@@ -1,8 +1,9 @@
 import os
+import re
 import json
 import logging
 import subprocess
-from flask import Flask, request, jsonify, render_template, abort, send_from_directory
+from flask import Flask, request, jsonify, render_template, abort, send_from_directory, Response, stream_with_context
 from werkzeug.utils import secure_filename
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -39,11 +40,28 @@ def load_chat_history():
     """Load chat history from file."""
     if os.path.exists(CHAT_HISTORY_FILE):
         with open(CHAT_HISTORY_FILE, 'r') as file:
-            return json.load(file)
-    return []
+            try:
+                history = json.load(file)
+                # If the loaded history is a dict, convert it to a list with one item
+                if isinstance(history, dict):
+                    return [history]
+                # If it's already a list, return it as is
+                elif isinstance(history, list):
+                    return history
+                # If it's neither a dict nor a list, return an empty list
+                else:
+                    logging.warning(f"Unexpected chat history format. Returning empty list.")
+                    return []
+            except json.JSONDecodeError:
+                logging.error(f"Error decoding chat history file. Returning empty list.")
+                return []
+    return []  # Return an empty list if the file doesn't exist
 
 def save_chat_history(history):
     """Save chat history to file."""
+    if not isinstance(history, list):
+        logging.warning(f"Attempting to save non-list chat history. Converting to list.")
+        history = [history] if history else []
     with open(CHAT_HISTORY_FILE, 'w') as file:
         json.dump(history, file, indent=4)
 
@@ -99,7 +117,6 @@ def initialize_embeddings():
         return OpenAIEmbeddings(model=embeddings_model.split(':')[1])
     elif embeddings_model.startswith('ollama:'):
         return OllamaEmbeddings(model=embeddings_model.split(':')[1])
-    # Add other embedding types here (Claude, Amazon, Google) when implemented
     else:
         raise ValueError(f"Unsupported embeddings model: {embeddings_model}")
 
@@ -177,59 +194,67 @@ def ask_question():
 
     logging.info(f"Received question: {question} using model: {model}")
 
-    try:
-        # Update the llm model dynamically if needed
-        global llm, qa_chain
-        llm = Ollama(model=model)
-        
-        # Reinitialize the qa_chain to use the latest vectorstore
-        initialize_qa_chain()
+    def generate():
+        yield "data: " + json.dumps({"status": "processing"}) + "\n\n"
 
-        result = qa_chain({"query": question})
-        answer = result['result']
-        source_docs = result['source_documents']
+        try:
+            # Update the llm model dynamically if needed
+            global llm, qa_chain
+            llm = Ollama(model=model)
+            
+            # Reinitialize the qa_chain to use the latest vectorstore
+            initialize_qa_chain()
 
-        # Calculate confidence score
-        confidence_score = calculate_confidence(source_docs)
+            result = qa_chain({"query": question})
+            answer = result['result']
+            source_docs = result['source_documents']
 
-        # Extract source details
-        if source_docs:
-            source_doc = source_docs[0]
-            page_number = source_doc.metadata.get('page', 'Unknown')
-            chunk_number = "Unknown"  # We don't have the original chunk info here
-            source_text = source_doc.page_content[:500]  # Truncate for brevity
-        else:
-            page_number = "Unknown"
-            chunk_number = "Unknown"
-            source_text = "No source found"
+            # Calculate confidence score
+            confidence_score = calculate_confidence(source_docs)
 
-        response = {
-            "Answer": answer,
-            "Confidence Score": confidence_score,
-            "Page": page_number,
-            "Chunk": chunk_number,
-            "Source": source_text
-        }
+            # Extract source details
+            if source_docs:
+                source_doc = source_docs[0]
+                page_number = source_doc.metadata.get('page', 'Unknown')
+                chunk_number = "Unknown"  # We don't have the original chunk info here
+                source_text = source_doc.page_content[:500]  # Truncate for brevity
+            else:
+                page_number = "Unknown"
+                chunk_number = "Unknown"
+                source_text = "No source found"
 
-        logging.info(f"Generated response: {response}")
+            response = {
+                "Answer": answer,
+                "Confidence Score": confidence_score,
+                "Page": page_number,
+                "Chunk": chunk_number,
+                "Source": source_text
+            }
 
-        # Save to chat history
-        history = load_chat_history()
-        history.append({
-            "question": question,
-            "answer": answer,
-            "confidence_score": confidence_score,
-            "page": page_number,
-            "chunk": chunk_number,
-            "source": source_text
-        })
-        save_chat_history(history)
+            logging.info(f"Generated response: {response}")
 
-        return jsonify(response)
+            yield "data: " + json.dumps(response) + "\n\n"
 
-    except Exception as e:
-        logging.error(f"Error processing question: {str(e)}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+            # Save to chat history
+            history = load_chat_history()
+            history.append({
+                "question": question,
+                "answer": answer,
+                "confidence_score": confidence_score,
+                "page": page_number,
+                "chunk": chunk_number,
+                "source": source_text
+            })
+            save_chat_history(history)
+
+        except Exception as e:
+            logging.error(f"Error processing question: {str(e)}", exc_info=True)
+            yield "data: " + json.dumps({"error": str(e)}) + "\n\n"
+
+        finally:
+            yield "data: " + json.dumps({"status": "complete"}) + "\n\n"
+
+    return Response(generate(), content_type='text/event-stream')
 
 @app.route('/models', methods=['GET'])
 def get_models():
@@ -261,6 +286,16 @@ def set_model():
     else:
         config["last_chosen_embeddings_model"] = model
         config["embeddings_model"] = model
+        
+        # Check if the selected PDF is already embedded with this model
+        if config.get('pdf_file'):
+            update_vectorstore_path()  # Update the path to the vectorstore based on the current model
+            pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], config['pdf_file'])
+
+            # If the vectorstore file does not exist, create it
+            if not os.path.exists(os.path.join(config['vectorstore_file'], "index.faiss")):
+                process_pdf_and_create_embeddings(pdf_path, config['pdf_file'])
+
     save_config(config)
     
     # Reinitialize embeddings if embeddings model changed
@@ -455,6 +490,46 @@ def initialize_qa_chain():
         logging.error(f"Vectorstore not found for the current embedding model: {vectorstore_path}")
         raise FileNotFoundError(f"Vectorstore not found at {vectorstore_path}")
 
+@app.route('/get_chat_history', methods=['GET'])
+def get_chat_history():
+    history = load_chat_history()
+    return jsonify(history)
+
+def read_existing_api_keys():
+    """Read existing API keys from constants.py"""
+    existing_keys = {}
+    if os.path.exists('constants.py'):
+        with open('constants.py', 'r') as f:
+            content = f.read()
+            for line in content.splitlines():
+                match = re.match(r"(\w+)\s*=\s*'([^']*)'", line)
+                if match:
+                    key, value = match.groups()
+                    existing_keys[key] = value
+    return existing_keys
+
+@app.route('/save_api_keys', methods=['POST'])
+def save_api_keys():
+    data = request.json
+    existing_keys = read_existing_api_keys()
+    
+    # Update only the keys that are provided in the request
+    api_keys = {
+        'OPENAI_API_KEY': data.get('openai') or existing_keys.get('OPENAI_API_KEY', ''),
+        'CLAUDE_API_KEY': data.get('claude') or existing_keys.get('CLAUDE_API_KEY', ''),
+        'GOOGLE_API_KEY': data.get('google') or existing_keys.get('GOOGLE_API_KEY', ''),
+        'AMAZON_API_KEY': data.get('amazon') or existing_keys.get('AMAZON_API_KEY', '')
+    }
+
+    try:
+        with open('constants.py', 'w') as f:
+            for key, value in api_keys.items():
+                f.write(f"{key} = '{value}'\n")
+        return jsonify({"message": "API keys saved successfully"}), 200
+    except Exception as e:
+        logging.error(f"Error saving API keys: {str(e)}")
+        return jsonify({"error": "Failed to save API keys"}), 500
+
 if __name__ == '__main__':
     # Ensure the upload folder and embeddings folder exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -467,12 +542,6 @@ if __name__ == '__main__':
         update_config_with_models(llm_models, 'llm')
     if embeddings_models:
         update_config_with_models(embeddings_models, 'embeddings')
-
-    # Create embeddings for all PDFs on startup
-    try:
-        create_embeddings_for_all_pdfs()
-    except Exception as e:
-        logging.error(f"Error creating embeddings on startup: {str(e)}")
 
     # Initialize the vectorstore and qa_chain
     pdf_path = os.path.join(config['pdf_folder'], config['pdf_file'])
