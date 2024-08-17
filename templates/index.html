@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Chatbot Clone</title>
+    <title>AI PDF Assistant</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <link rel="shortcut icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -52,10 +52,14 @@ body, html {
     transform: translateX(-100%);
 }
 
-.sidebar.collapsed .new-chat-btn {
-    position: fixed;
-    top: 10px;
-    left: 10px;
+.sidebar.collapsed {
+    width: 60px;
+    overflow: visible;
+}
+
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .main-content {
@@ -174,7 +178,11 @@ select:hover, .icon-button:hover {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: background-color 0.3s, transform 0.3s;
+    transition: background-color 0.3s, transform 0.3s, left 0.3s ease;
+}
+
+.sidebar.collapsed .new-chat-btn {
+    left: 10px;
 }
 
 .new-chat-btn:hover {
@@ -182,10 +190,30 @@ select:hover, .icon-button:hover {
     transform: scale(1.1);
 }
 
+.inner-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--text-color);
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .inner-toggle {
+    transform: rotate(180deg);
+}
+
 .sidebar-content {
     flex-grow: 1;
     overflow-y: auto;
     padding-top: 60px;
+    transition: opacity 0.3s ease;
 }
 
 #chatHistory > .chat-history-item {
@@ -378,6 +406,18 @@ footer {
     color: #4caf50;
 }
 
+.microphone-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+.microphone-button.active {
+    color: red;
+}
+
 @media (max-width: 1010px) {
     .sidebar {
         width: 30%;
@@ -429,18 +469,6 @@ footer {
     }
 }
 
-.microphone-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 24px;
-            margin-right: 10px;
-        }
-        
-        .microphone-button.active {
-            color: red;
-        }
-
 @media (max-width: 600px) {
     .header-right {
         flex-wrap: wrap;
@@ -456,12 +484,14 @@ footer {
     }
 }
     </style>
+</head>
 <body>
     <div class="container" id="container">
         <div class="sidebar" id="sidebar">
             <button class="new-chat-btn" onclick="startNewChat()">
                 <span style="margin-right: 5px;">+</span>
             </button>
+            <button class="inner-toggle" onclick="toggleInnerSidebar()">☰</button>
             <div class="sidebar-content">
                 <h2>Chat History</h2>
                 <div id="chatHistory"></div>
@@ -483,7 +513,7 @@ footer {
                     <select id="embedModelSelect">
                         <option value="">Select embedding model</option>
                     </select>
-                    <button class="icon-button" onclick="startNewChat()" title="New Chat">🗨️</button>
+                    <button class="icon-button" onclick="startNewChat()" title="New Chat">✍️</button>
                     <button class="icon-button" onclick="toggleSettings()" title="Settings">⚙️</button>
                 </div>
             </header>
@@ -553,26 +583,35 @@ footer {
         </div>
     </div>
     <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf">
-    
-    </body>
+
 <script>
 let chatHistory = [];
 let currentChatId = null;
 
-function toggleSidebar() {
+function toggleInnerSidebar() {
+    console.log("Inner sidebar toggle clicked");
+
+    // Find the main sidebar and the main content elements
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
 
+    // Toggle the 'hidden' class on the sidebar
     sidebar.classList.toggle('hidden');
 
+    // Adjust the main content's width and margin based on the sidebar's visibility
     if (sidebar.classList.contains('hidden')) {
         mainContent.classList.add('full-width');
         mainContent.style.marginLeft = "0";
     } else {
         mainContent.classList.remove('full-width');
-        mainContent.style.marginLeft = "250px";  // Adjust based on the sidebar width
+        mainContent.style.marginLeft = "250px";  // Adjust this value to match your sidebar's width
     }
 }
+
+function toggleSidebar() {
+    toggleInnerSidebar();  // Call the same functionality as the inner toggle
+}
+
 
 document.querySelectorAll('.option-btn').forEach(button => {
     button.addEventListener('click', function() {
@@ -584,7 +623,6 @@ document.querySelectorAll('.option-btn').forEach(button => {
     });
 });
 
-// Add this new code for handling API key saving
 document.getElementById('saveApiKeys').addEventListener('click', function() {
     const apiKeys = {
         openai: document.getElementById('openaiKey').value,
@@ -741,7 +779,6 @@ async function sendMessage() {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let botResponse = '';
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -759,19 +796,30 @@ async function sendMessage() {
                         } else if (data.status === 'complete') {
                             // Finalize the response
                         } else if (data.Answer) {
-                            botResponse += data.Answer;
-                            updateBotMessage(botResponse);
+                            updateBotMessage(
+                                `${data.Answer}\n\n` +
+                                `Confidence Score: ${data['Confidence Score']}\n` +
+                                `Page: ${data.Page}\n` +
+                                `Chunk: ${data.Chunk}\n` +
+                                `Source: ${data.Source}`
+                            );
+                            chatHistory[chatHistory.length - 1].messages.push({ 
+                                role: 'bot', 
+                                content: data.Answer,
+                                metadata: {
+                                    confidenceScore: data['Confidence Score'],
+                                    page: data.Page,
+                                    chunk: data.Chunk,
+                                    source: data.Source
+                                }
+                            });
+                            updateChatHistory();
                         } else if (data.error) {
                             throw new Error(data.error);
                         }
                     }
                 }
             }
-
-            // Final update to the bot message
-            updateBotMessage(botResponse);
-            chatHistory[chatHistory.length - 1].messages.push({ role: 'bot', content: botResponse });
-            updateChatHistory();
 
         } catch (error) {
             console.error('Error:', error);
@@ -1206,6 +1254,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Error during initialization:', error);
     }
 });
+
+// Get a reference to the settings dropdown
+const settingsDropdown = document.getElementById('settingsDropdown');
+
+// Dismiss settings menu when clicked anywhere on the page
+document.addEventListener('click', function(event) {
+    if (settingsDropdown && !settingsDropdown.contains(event.target)) {
+        settingsDropdown.style.display = 'none';
+    }
+});
+
+// Prevent the dropdown from closing when clicking inside it
+if (settingsDropdown) {
+    settingsDropdown.addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+}
 </script>
 </body>
 </html>
