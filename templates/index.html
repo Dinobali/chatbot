@@ -166,9 +166,9 @@ select:hover, .icon-button:hover {
 }
 
 .new-chat-btn {
-    position: fixed;
-    top: 10px;
-    left: 200px;
+    position: absolute;
+    top: 20px; /* Increased from 10px to 20px */
+    left: 10px;
     z-index: 1001;
     background-color: var(--sidebar-bg);
     border-radius: 50%;
@@ -180,6 +180,7 @@ select:hover, .icon-button:hover {
     cursor: pointer;
     transition: background-color 0.3s, transform 0.3s, left 0.3s ease;
 }
+
 
 .sidebar.collapsed .new-chat-btn {
     left: 10px;
@@ -212,8 +213,9 @@ select:hover, .icon-button:hover {
 .sidebar-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-top: 60px;
+    padding-top: 60px; /* Increased from 60px to 80px */
     transition: opacity 0.3s ease;
+    margin-top: 20px;
 }
 
 #chatHistory > .chat-history-item {
@@ -591,27 +593,23 @@ let currentChatId = null;
 function toggleInnerSidebar() {
     console.log("Inner sidebar toggle clicked");
 
-    // Find the main sidebar and the main content elements
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
 
-    // Toggle the 'hidden' class on the sidebar
     sidebar.classList.toggle('hidden');
 
-    // Adjust the main content's width and margin based on the sidebar's visibility
     if (sidebar.classList.contains('hidden')) {
         mainContent.classList.add('full-width');
         mainContent.style.marginLeft = "0";
     } else {
         mainContent.classList.remove('full-width');
-        mainContent.style.marginLeft = "250px";  // Adjust this value to match your sidebar's width
+        mainContent.style.marginLeft = "250px";
     }
 }
 
 function toggleSidebar() {
-    toggleInnerSidebar();  // Call the same functionality as the inner toggle
+    toggleInnerSidebar();
 }
-
 
 document.querySelectorAll('.option-btn').forEach(button => {
     button.addEventListener('click', function() {
@@ -836,6 +834,7 @@ function updateBotMessage(content) {
         document.getElementById('chatArea').appendChild(botMessageDiv);
     }
     botMessageDiv.innerHTML = content;
+    addActionButtons(botMessageDiv);
     document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
 }
 
@@ -843,18 +842,23 @@ function appendMessage(role, content) {
     const chatArea = document.getElementById('chatArea');
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', `${role}-message`);
-    messageDiv.innerHTML = `
-        ${content}
-        <div class="message-actions">
-            <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
-            <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
-            <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
-            <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
-            <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
-        </div>
-    `;
+    messageDiv.textContent = content;
+    addActionButtons(messageDiv);
     chatArea.appendChild(messageDiv);
     chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addActionButtons(messageDiv) {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.classList.add('message-actions');
+    actionsDiv.innerHTML = `
+        <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
+        <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
+        <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
+        <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
+        <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
+    `;
+    messageDiv.appendChild(actionsDiv);
 }
 
 function updateChatHistory() {
@@ -894,7 +898,7 @@ function loadChatHistory() {
         .then(response => response.json())
         .then(history => {
             const chatHistory = document.getElementById('chatHistory');
-            chatHistory.innerHTML = ''; // Clear existing content
+            chatHistory.innerHTML = '';
             history.forEach((item, index) => {
                 const historyItem = document.createElement('div');
                 historyItem.className = 'chat-history-item';
@@ -919,6 +923,7 @@ function showFullConversation(index) {
                 <div><strong>Page:</strong> ${item.page}</div>
                 <div><strong>Source:</strong> ${item.source}</div>
             `;
+            addActionButtons(chatArea.lastElementChild);
         })
         .catch(error => console.error('Error fetching full conversation:', error));
 }
@@ -1037,7 +1042,7 @@ function saveEdit(messageDiv, editBox) {
     const newContent = editBox.value.trim();
     if (newContent) {
         messageDiv.innerHTML = newContent;
-        appendMessageActions(messageDiv);
+        addActionButtons(messageDiv);
         
         const chatIndex = chatHistory.findIndex(chat => chat.id === currentChatId);
         const messageIndex = Array.from(messageDiv.parentElement.children).indexOf(messageDiv);
@@ -1056,6 +1061,7 @@ function readAloud(button) {
 function regenerateMessage(button) {
     const messageDiv = button.closest('.message');
     console.log('Regenerate message');
+    // Implement regeneration logic here
 }
 
 function likeMessage(button) {
@@ -1065,19 +1071,6 @@ function likeMessage(button) {
     } else {
         button.innerHTML = '<i class="far fa-thumbs-up"></i>';
     }
-}
-
-function appendMessageActions(messageDiv) {
-    const actionsDiv = document.createElement('div');
-    actionsDiv.classList.add('message-actions');
-    actionsDiv.innerHTML = `
-        <button onclick="readAloud(this)" title="Read aloud"><i class="fas fa-volume-up"></i></button>
-        <button onclick="regenerateMessage(this)" title="Regenerate"><i class="fas fa-sync-alt"></i></button>
-        <button onclick="copyMessage(this)" title="Copy"><i class="far fa-copy"></i></button>
-        <button onclick="editMessage(this)" title="Edit"><i class="far fa-edit"></i></button>
-        <button onclick="likeMessage(this)" title="Like"><i class="far fa-thumbs-up"></i></button>
-    `;
-    messageDiv.appendChild(actionsDiv);
 }
 
 function autoResize(textarea) {
