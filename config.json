@@ -1,12 +1,38 @@
 {
     "pdf_folder": "pdf",
     "pdf_file": "alice.pdf",
-    "embeddings_model": "text-embedding-3-large",
+    "embeddings_model": "ollama:nomic-embed-text:latest",
     "llm_model": "gemma2:27b",
     "embeddings_path": "embeddings",
-    "vectorstore_file": "alice_vectorstore",
-    "available_models": [
+    "vectorstore_file": "alice_ollama_nomic-embed-text_latest_embeddings",
+    "available_llm_models": [
+        "deepseek-coder-v2:latest",
+        "command-r:latest",
+        "qwen2:0.5b",
+        "qwen2:latest",
+        "gemma2:2b",
+        "gemma2:latest",
+        "mixtral:8x7b",
+        "mixtral:8x22b",
+        "phi3:14b",
+        "gemma2:27b",
+        "llama3.1:70b",
+        "mistral-large:latest",
+        "mistral-nemo:latest",
         "llama3.1:latest"
     ],
-    "last_chosen_model": "llama3.1:latest"
+    "available_embeddings_models": [
+        "ollama:snowflake-arctic-embed:latest",
+        "ollama:nomic-embed-text:latest",
+        "ollama:bge-m3:latest",
+        "ollama:bge-large:latest",
+        "openai:text-embedding-3-small",
+        "openai:text-embedding-3-large",
+        "openai:text-embedding-ada-002",
+        "amazon:titan-embed-text-v1",
+        "google:embedding-001"
+    ],
+    "last_chosen_llm_model": "gemma2:27b",
+    "last_chosen_embeddings_model": "ollama:nomic-embed-text:latest",
+    "last_selected_pdf": "alice.pdf"
 }
