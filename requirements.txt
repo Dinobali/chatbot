@@ -4,6 +4,5 @@ langchain-community
 openai
 PyPDF2
 faiss-cpu
-pypdf
 tiktoken
 Werkzeug
