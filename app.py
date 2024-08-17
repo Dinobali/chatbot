@@ -96,17 +96,9 @@ def update_config_with_models(models, model_type='llm'):
         config['available_llm_models'] = models
     elif model_type == 'embeddings':
         ollama_models = models
-        openai_models = [
-            "openai:text-embedding-3-small",
-            "openai:text-embedding-3-large",
-            "openai:text-embedding-ada-002"
-        ]
-        other_models = [
-            "claude:embedding-v3",
-            "amazon:titan-embed-text-v1",
-            "google:embedding-001"
-        ]
-        config['available_embeddings_models'] = ollama_models + openai_models + other_models
+        # Keep the existing non-Ollama models
+        existing_models = [model for model in config.get('available_embeddings_models', []) if not model.startswith('ollama:')]
+        config['available_embeddings_models'] = ollama_models + existing_models
     save_config(config)
     logging.info(f"Config updated with latest {model_type} models.")
 
@@ -175,6 +167,47 @@ def allowed_file(filename):
 def home():
     return render_template('index.html')  # Render the index.html template
 
+# Add this function to check embedding compatibility
+def check_embedding_compatibility(vectorstore_path):
+    current_embeddings = initialize_embeddings()
+    try:
+        vectorstore = FAISS.load_local(vectorstore_path, current_embeddings, allow_dangerous_deserialization=True)
+        # Perform a test query to check compatibility
+        vectorstore.similarity_search("test query", k=1)
+        return True
+    except AssertionError:
+        return False
+
+# Update the initialize_qa_chain function
+def initialize_qa_chain():
+    global qa_chain, embeddings
+    
+    current_embedding_model = config['embeddings_model']
+    embeddings_folder = f"{current_embedding_model.replace(':', '_')}_embeddings"
+    vectorstore_folder = f"{os.path.splitext(config['pdf_file'])[0]}_{embeddings_folder}"
+    vectorstore_path = os.path.join(config['embeddings_path'], embeddings_folder, vectorstore_folder)
+
+    if os.path.exists(vectorstore_path):
+        embeddings = initialize_embeddings()
+        if check_embedding_compatibility(vectorstore_path):
+            try:
+                vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+                qa_chain = create_qa_chain(vectorstore)
+                logging.info(f"Successfully initialized QA chain with vectorstore from {vectorstore_path}")
+            except Exception as e:
+                logging.error(f"Error loading vectorstore from {vectorstore_path}: {str(e)}")
+                raise
+        else:
+            logging.error(f"Incompatible embeddings. Recreating vectorstore for {config['pdf_file']}")
+            pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], config['pdf_file'])
+            process_pdf_and_create_embeddings(pdf_path, config['pdf_file'])
+            vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+            qa_chain = create_qa_chain(vectorstore)
+    else:
+        logging.error(f"Vectorstore not found for the current embedding model: {vectorstore_path}")
+        raise FileNotFoundError(f"Vectorstore not found at {vectorstore_path}")
+
+# Update the ask_question function
 @app.route('/ask', methods=['POST'])
 def ask_question():
     data = request.json
@@ -216,7 +249,7 @@ def ask_question():
             if source_docs:
                 source_doc = source_docs[0]
                 page_number = source_doc.metadata.get('page', 'Unknown')
-                chunk_number = "Unknown"  # We don't have the original chunk info here
+                chunk_number = "Unknown"
                 source_text = source_doc.page_content[:500]  # Truncate for brevity
             else:
                 page_number = "Unknown"
@@ -230,8 +263,6 @@ def ask_question():
                 "Chunk": chunk_number,
                 "Source": source_text
             }
-
-            logging.info(f"Generated response: {response}")
 
             yield "data: " + json.dumps(response) + "\n\n"
 
@@ -247,6 +278,10 @@ def ask_question():
             })
             save_chat_history(history)
 
+        except AssertionError:
+            error_message = "Embedding model mismatch. Please recreate the vectorstore with the current embedding model."
+            logging.error(error_message)
+            yield "data: " + json.dumps({"error": error_message}) + "\n\n"
         except Exception as e:
             logging.error(f"Error processing question: {str(e)}", exc_info=True)
             yield "data: " + json.dumps({"error": str(e)}) + "\n\n"
@@ -254,12 +289,11 @@ def ask_question():
         finally:
             yield "data: " + json.dumps({"status": "complete"}) + "\n\n"
 
-    return Response(generate(), content_type='text/event-stream')
-
+    return Response(stream_with_context(generate()), content_type='text/event-stream')
 @app.route('/models', methods=['GET'])
 def get_models():
     llm_models = fetch_available_models('llm')
-    embeddings_models = fetch_available_models('embeddings')
+    embeddings_models = config.get('available_embeddings_models', [])  # Get from config instead of fetch
     return jsonify({"llm_models": llm_models, "embeddings_models": embeddings_models})
 
 @app.route('/set_model', methods=['POST'])
@@ -329,12 +363,15 @@ def get_last_model():
 def refresh_models():
     """Refresh the list of available models for both LLM and embeddings."""
     llm_models = fetch_available_models('llm')
-    embeddings_models = fetch_available_models('embeddings')
+    ollama_embeddings_models = fetch_available_models('embeddings')
     
     if llm_models:
         update_config_with_models(llm_models, 'llm')
-    if embeddings_models:
-        update_config_with_models(embeddings_models, 'embeddings')
+    if ollama_embeddings_models:
+        update_config_with_models(ollama_embeddings_models, 'embeddings')
+    
+    config = load_config()
+    embeddings_models = config.get('available_embeddings_models', [])
     
     return jsonify({
         "message": "Models refreshed successfully",
@@ -537,11 +574,11 @@ if __name__ == '__main__':
     
     # Fetch and update models on startup
     llm_models = fetch_available_models('llm')
-    embeddings_models = fetch_available_models('embeddings')
+    ollama_embeddings_models = fetch_available_models('embeddings')
     if llm_models:
         update_config_with_models(llm_models, 'llm')
-    if embeddings_models:
-        update_config_with_models(embeddings_models, 'embeddings')
+    if ollama_embeddings_models:
+        update_config_with_models(ollama_embeddings_models, 'embeddings')
 
     # Initialize the vectorstore and qa_chain
     pdf_path = os.path.join(config['pdf_folder'], config['pdf_file'])
