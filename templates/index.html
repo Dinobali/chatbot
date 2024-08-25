@@ -9,13 +9,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
 :root {
-    --bg-color: #212121;
+    --bg-color: #343541;
     --text-color: #ffffff;
     --sidebar-bg: #171717;
-    --input-bg: #2f2f2f;
-    --button-bg: #212121;
+    --input-bg: #444654;
+    --button-bg: #444654;
     --hover-color: #2f2f2f;
-    --accent-color: #10a37f; /* Accent color for hover effects and buttons */
+    --accent-color: #10a37f;
 }
 
 body, html {
@@ -86,6 +86,7 @@ header {
     position: sticky;
     top: 0;
     z-index: 100;
+    border-bottom: 1px solid var(--hover-color);
 }
 
 .header-left, .header-right {
@@ -100,6 +101,7 @@ header {
 .header-left h1 {
     margin: 0;
     font-size: 1.2em;
+    margin-left: 50px;
 }
 
 button {
@@ -153,21 +155,20 @@ select:hover, .icon-button:hover {
 }
 
 .sidebar-toggle {
-    position: static;
-    top: auto;
-    left: auto;
-    margin-left: 10px;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: absolute;
+    left: 22px;
+    transition: left 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+}
+
+.sidebar-visible .sidebar-toggle {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .new-chat-btn {
     position: absolute;
-    top: 20px; /* Increased from 10px to 20px */
+    top: 20px;
     left: 10px;
     z-index: 1001;
     background-color: var(--sidebar-bg);
@@ -180,7 +181,6 @@ select:hover, .icon-button:hover {
     cursor: pointer;
     transition: background-color 0.3s, transform 0.3s, left 0.3s ease;
 }
-
 
 .sidebar.collapsed .new-chat-btn {
     left: 10px;
@@ -204,6 +204,7 @@ select:hover, .icon-button:hover {
     font-size: 18px;
     color: var(--text-color);
     transition: transform 0.3s ease;
+    z-index: 1002;
 }
 
 .sidebar.collapsed .inner-toggle {
@@ -213,7 +214,7 @@ select:hover, .icon-button:hover {
 .sidebar-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-top: 60px; /* Increased from 60px to 80px */
+    padding-top: 60px;
     transition: opacity 0.3s ease;
     margin-top: 20px;
 }
@@ -304,6 +305,12 @@ footer {
 
 .input-area textarea:focus {
     outline: none;
+}
+
+/* Adjusting the size of the attachment and send icons in the input area */
+.input-area button {
+    font-size: 24px; /* Increase from the default size */
+    padding: 10px; /* Add some padding for a larger clickable area */
 }
 
 .chat-area {
@@ -493,7 +500,7 @@ footer {
             <button class="new-chat-btn" onclick="startNewChat()">
                 <span style="margin-right: 5px;">+</span>
             </button>
-            <button class="inner-toggle" onclick="toggleInnerSidebar()">☰</button>
+            <button class="inner-toggle" title="Toggle Sidebar">☰</button>
             <div class="sidebar-content">
                 <h2>Chat History</h2>
                 <div id="chatHistory"></div>
@@ -502,10 +509,10 @@ footer {
         <div class="main-content">
             <header>
                 <div class="header-left">
+                    <button class="sidebar-toggle icon-button" title="Toggle Sidebar">☰</button>
                     <h1></h1>
                 </div>
                 <div class="header-right">
-                    <button class="sidebar-toggle icon-button" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
                     <select id="pdfSelect">
                         <option value="">Select a PDF</option>
                     </select>
@@ -515,7 +522,7 @@ footer {
                     <select id="embedModelSelect">
                         <option value="">Select embedding model</option>
                     </select>
-                    <button class="icon-button" onclick="startNewChat()" title="New Chat">✍️</button>
+                    <button class="icon-button" onclick="startNewChat()" title="New Chat">+</button>
                     <button class="icon-button" onclick="toggleSettings()" title="Settings">⚙️</button>
                 </div>
             </header>
@@ -590,13 +597,13 @@ footer {
 let chatHistory = [];
 let currentChatId = null;
 
-function toggleInnerSidebar() {
-    console.log("Inner sidebar toggle clicked");
-
+function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
+    const body = document.body;
 
     sidebar.classList.toggle('hidden');
+    body.classList.toggle('sidebar-visible');
 
     if (sidebar.classList.contains('hidden')) {
         mainContent.classList.add('full-width');
@@ -607,9 +614,29 @@ function toggleInnerSidebar() {
     }
 }
 
-function toggleSidebar() {
-    toggleInnerSidebar();
+function toggleInnerSidebar() {
+    toggleSidebar(); // Reuse the same function for consistency
 }
+
+// Call this function on page load to set the initial state
+function initializeSidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    const body = document.body;
+
+    if (!sidebar.classList.contains('hidden')) {
+        body.classList.add('sidebar-visible');
+    }
+}
+
+// Add this to your existing DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    initializeSidebarState();
+
+    // Add event listeners for both toggle buttons
+    document.querySelector('.sidebar-toggle').addEventListener('click', toggleSidebar);
+    document.querySelector('.inner-toggle').addEventListener('click', toggleInnerSidebar);
+});
 
 document.querySelectorAll('.option-btn').forEach(button => {
     button.addEventListener('click', function() {
