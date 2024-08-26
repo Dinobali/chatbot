@@ -427,6 +427,45 @@ footer {
     color: red;
 }
 
+.thinking-dots {
+    display: inline-block;
+    font-size: 100px; /* Increase the font size */
+    line-height: 1;
+    color: #007bff;
+}
+
+.thinking-dots span {
+    display: inline-block;
+    animation-name: blink;
+    animation-duration: 1.4s;
+    animation-iteration-count: infinite;
+    animation-fill-mode: both;
+    margin: 0 2px; /* Add some spacing between dots */
+}
+
+.thinking-dots span:nth-child(2) {
+    animation-delay: .2s;
+}
+
+.thinking-dots span:nth-child(3) {
+    animation-delay: .4s;
+}
+
+@keyframes blink {
+    0% {
+        opacity: .2;
+        transform: scale(0.8); /* Add a slight scale animation */
+    }
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: .2;
+        transform: scale(0.8);
+    }
+}
+
 @media (max-width: 1010px) {
     .sidebar {
         width: 30%;
@@ -774,7 +813,6 @@ async function sendMessage() {
     if (message) {
         document.querySelector('.options-grid').style.display = 'none';
         document.getElementById('chatArea').style.display = 'block';
-
         appendMessage('user', message);
         if (!currentChatId) {
             currentChatId = Date.now();
@@ -782,9 +820,22 @@ async function sendMessage() {
         }
         chatHistory[chatHistory.length - 1].messages.push({ role: 'user', content: message });
         updateChatHistory();
-
         userInput.value = '';
         autoResize(userInput);
+
+        // Add a thinking indicator
+        const thinkingIndicator = document.createElement('div');
+        thinkingIndicator.className = 'message bot-message thinking';
+        thinkingIndicator.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+        document.getElementById('chatArea').appendChild(thinkingIndicator);
+
+        let botResponseData = {
+            Answer: '',
+            ConfidenceScore: '',
+            Page: '',
+            Chunk: '',
+            Source: ''
+        };
 
         try {
             const response = await fetch('/ask', {
@@ -797,70 +848,96 @@ async function sendMessage() {
                     model: selectedModel
                 })
             });
-
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-
+            let botResponseStarted = false;
+            let accumulatedData = '';
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
                 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n\n');
+                accumulatedData += chunk;
+                const lines = accumulatedData.split('\n\n');
+                accumulatedData = lines.pop(); // Keep the last potentially incomplete line
                 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = JSON.parse(line.slice(5));
-                        
-                        if (data.status === 'processing') {
-                            // Optionally show a "thinking" indicator here
-                        } else if (data.status === 'complete') {
-                            // Finalize the response
-                        } else if (data.Answer) {
-                            updateBotMessage(
-                                `${data.Answer}\n\n` +
-                                `Confidence Score: ${data['Confidence Score']}\n` +
-                                `Page: ${data.Page}\n` +
-                                `Chunk: ${data.Chunk}\n` +
-                                `Source: ${data.Source}`
-                            );
-                            chatHistory[chatHistory.length - 1].messages.push({ 
-                                role: 'bot', 
-                                content: data.Answer,
-                                metadata: {
-                                    confidenceScore: data['Confidence Score'],
-                                    page: data.Page,
-                                    chunk: data.Chunk,
-                                    source: data.Source
+                        try {
+                            const data = JSON.parse(line.slice(5));
+                            
+                            if (data.status === 'processing') {
+                                // Keep the thinking indicator
+                            } else if (data.status === 'complete') {
+                                // Remove the thinking indicator when complete
+                                thinkingIndicator.remove();
+                            } else if (data.Answer) {
+                                if (!botResponseStarted) {
+                                    // Remove the thinking indicator when the bot starts responding
+                                    thinkingIndicator.remove();
+                                    botResponseStarted = true;
                                 }
-                            });
-                            updateChatHistory();
-                        } else if (data.error) {
-                            throw new Error(data.error);
+                                botResponseData.Answer = data.Answer;
+                                botResponseData.ConfidenceScore = data['Confidence Score'];
+                                botResponseData.Page = data.Page;
+                                botResponseData.Chunk = data.Chunk;
+                                botResponseData.Source = data.Source;
+
+                                updateBotMessage(botResponseData);
+                                
+                                chatHistory[chatHistory.length - 1].messages.push({ 
+                                    role: 'bot', 
+                                    content: data.Answer,
+                                    metadata: {
+                                        confidenceScore: data['Confidence Score'],
+                                        page: data.Page,
+                                        chunk: data.Chunk,
+                                        source: data.Source
+                                    }
+                                });
+                                updateChatHistory();
+                            } else if (data.error) {
+                                throw new Error(data.error);
+                            }
+                        } catch (jsonError) {
+                            console.error('Error parsing JSON:', jsonError);
+                            console.log('Problematic line:', line);
+                            // Continue processing other lines
                         }
                     }
                 }
             }
-
         } catch (error) {
             console.error('Error:', error);
-            appendMessage('bot', 'Sorry, there was an error processing your request.');
+            thinkingIndicator.remove(); // Remove thinking indicator on error
+            appendMessage('bot', 'Sorry, there was an error processing your request. Please try again.');
         }
     }
 }
 
-function updateBotMessage(content) {
+function updateBotMessage(data) {
     let botMessageDiv = document.querySelector('.bot-message:last-child');
-    if (!botMessageDiv) {
+    if (!botMessageDiv || botMessageDiv.classList.contains('thinking')) {
         botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('message', 'bot-message');
         document.getElementById('chatArea').appendChild(botMessageDiv);
     }
-    botMessageDiv.innerHTML = content;
+    
+    let confidenceHtml = '';
+    if (data.ConfidenceScore && data.ConfidenceScore !== 'NaN') {
+        confidenceHtml = `<p><strong>Confidence Score:</strong> ${data.ConfidenceScore}</p>`;
+    }
+    
+    botMessageDiv.innerHTML = `
+        <div class="formatted-answer">${data.Answer}</div>
+        ${confidenceHtml}
+        <p><strong>Page:</strong> ${data.Page || 'N/A'}</p>
+        <p><strong>Source:</strong> ${data.Source || 'N/A'}</p>
+    `;
+    
     addActionButtons(botMessageDiv);
     document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
 }
