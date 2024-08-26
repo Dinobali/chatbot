@@ -141,6 +141,8 @@ def process_pdf(pdf_path):
 def create_qa_chain(vectorstore):
     prompt_template = """Use the following context to answer the question at the end. If the context is not sufficient to answer the question accurately, please state that the information is not available. Provide a confidence score between 0 and 1 for your answer, where 1 means high confidence and 0 means low confidence.
 
+    Format your answer using Markdown for better readability. Use paragraphs, bullet points, or numbered lists where appropriate.
+
     {context}
 
     Question: {question}
@@ -207,7 +209,6 @@ def initialize_qa_chain():
         logging.error(f"Vectorstore not found for the current embedding model: {vectorstore_path}")
         raise FileNotFoundError(f"Vectorstore not found at {vectorstore_path}")
 
-# Update the ask_question function
 @app.route('/ask', methods=['POST'])
 def ask_question():
     data = request.json
@@ -249,18 +250,18 @@ def ask_question():
             if source_docs:
                 source_doc = source_docs[0]
                 page_number = source_doc.metadata.get('page', 'Unknown')
-                chunk_number = "Unknown"
                 source_text = source_doc.page_content[:500]  # Truncate for brevity
             else:
                 page_number = "Unknown"
-                chunk_number = "Unknown"
                 source_text = "No source found"
 
+            # Format the answer without including confidence score and page number
+            formatted_answer = format_answer(answer)
+
             response = {
-                "Answer": answer,
-                "Confidence Score": confidence_score,
+                "Answer": formatted_answer,
+                "ConfidenceScore": f"{confidence_score:.2f}",
                 "Page": page_number,
-                "Chunk": chunk_number,
                 "Source": source_text
             }
 
@@ -270,10 +271,9 @@ def ask_question():
             history = load_chat_history()
             history.append({
                 "question": question,
-                "answer": answer,
+                "answer": formatted_answer,
                 "confidence_score": confidence_score,
                 "page": page_number,
-                "chunk": chunk_number,
                 "source": source_text
             })
             save_chat_history(history)
@@ -285,11 +285,33 @@ def ask_question():
         except Exception as e:
             logging.error(f"Error processing question: {str(e)}", exc_info=True)
             yield "data: " + json.dumps({"error": str(e)}) + "\n\n"
-
         finally:
             yield "data: " + json.dumps({"status": "complete"}) + "\n\n"
 
     return Response(stream_with_context(generate()), content_type='text/event-stream')
+
+def format_answer(answer):
+    """Format the answer as HTML for better readability."""
+    paragraphs = answer.split('\n\n')
+    formatted_paragraphs = []
+    for para in paragraphs:
+        if re.match(r'^\d+\.|\*', para.strip()):
+            formatted_paragraphs.append(f"<li>{para.strip()}</li>")
+        else:
+            formatted_para = f"<p><strong>{para.strip().split('.')[0]}.</strong> {' '.join(para.strip().split('.')[1:])}</p>"
+            formatted_paragraphs.append(formatted_para)
+    
+    formatted_answer = "".join(formatted_paragraphs)
+    return f"<div class='formatted-answer'>{formatted_answer}</div>"
+
+def calculate_confidence(source_docs):
+    """Calculate confidence score based on the number of source documents."""
+    return min(len(source_docs) / 3, 1.0)  # Adjust denominator as needed
+
+
+
+    
+
 @app.route('/models', methods=['GET'])
 def get_models():
     llm_models = fetch_available_models('llm')
@@ -504,28 +526,6 @@ def create_embeddings():
     except Exception as e:
         logging.error(f"Error creating embeddings: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-def initialize_qa_chain():
-    global qa_chain, embeddings
-    
-    # Use the current embedding model's vectorstore
-    current_embedding_model = config['embeddings_model']
-    embeddings_folder = f"{current_embedding_model.replace(':', '_')}_embeddings"
-    vectorstore_folder = f"{os.path.splitext(config['pdf_file'])[0]}_{embeddings_folder}"
-    vectorstore_path = os.path.join(config['embeddings_path'], embeddings_folder, vectorstore_folder)
-
-    if os.path.exists(vectorstore_path):
-        embeddings = initialize_embeddings()
-        try:
-            vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-            qa_chain = create_qa_chain(vectorstore)
-            logging.info(f"Successfully initialized QA chain with vectorstore from {vectorstore_path}")
-        except Exception as e:
-            logging.error(f"Error loading vectorstore from {vectorstore_path}: {str(e)}")
-            raise
-    else:
-        logging.error(f"Vectorstore not found for the current embedding model: {vectorstore_path}")
-        raise FileNotFoundError(f"Vectorstore not found at {vectorstore_path}")
 
 @app.route('/get_chat_history', methods=['GET'])
 def get_chat_history():
